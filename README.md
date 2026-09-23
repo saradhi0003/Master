@@ -1,5 +1,7 @@
 # Job Command Center
 
+> **Moved.** This project now lives in the private repo `saradhi0003/jobsearch`, which runs the hourly job feed. The hourly job in this repo is turned off.
+
 A job-search dashboard for Salesforce Data 360 / Agentforce Technical Builder roles. It has three parts:
 
 - **Pipeline:** a Kanban board (Saved → Applied → Recruiter Screen → Interview → Offer → Rejected) with match %, resume version, follow-up dates, notes, stats, and a banner when a follow-up is due within 48 hours.
