@@ -375,8 +375,15 @@ footer { padding: 8px 0 28px; font-size: 12px; color: var(--muted); }
       <div class="doc">
         <div class="panel-card">
           <h2>Hourly job feed</h2>
-          <p class="small">A GitHub Action in this repo rebuilds the feed every hour, even when this page is closed. This page re-reads it on the interval below while it's open.</p>
+          <p class="small">A GitHub Action in your repo rebuilds the feed every hour, even when this page is closed. This page re-reads it on the interval below while it's open.</p>
           <form class="stack" id="settingsForm">
+            <label>Feed repository
+              <input type="text" name="feedRepo" placeholder="owner/repo" autocomplete="off" spellcheck="false">
+            </label>
+            <label>GitHub token (needed for a private repo)
+              <input type="password" name="token" placeholder="github_pat_…" autocomplete="off" spellcheck="false">
+            </label>
+            <p class="muted small" style="margin:-6px 0 0">Create a <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">fine-grained token</a> for this one repository with read-only <b>Contents</b> access. It stays in this browser, is sent only to api.github.com, and is left out of exports.</p>
             <label>Custom feed endpoint (optional)
               <input type="url" name="endpoint" placeholder="Leave blank to use this repo's hourly feed">
             </label>
@@ -459,8 +466,9 @@ const STAGES = ['Saved', 'Applied', 'Recruiter Screen', 'Interview', 'Offer', 'R
 const CLOSED = new Set(['Offer', 'Rejected']);
 const STORE_KEY = 'jcc.v1';
 const FEED_KEY = 'jcc.feed.v1';
-const REPO = 'saradhi0003/Master';
+const REPO = 'saradhi0003/job-command-center';
 const FEED_BRANCH = 'job-feed';
+const REPO_RE = /^[\w.-]+\/[\w.-]+$/;
 
 const SCAN_LEADS = [
   { title: 'Forward Deployed Engineer, Agentforce', company: 'Salesforce', location: 'Multiple US', match: 92,
@@ -563,7 +571,7 @@ function toast(msg) {
 }
 
 /* ---------- state ---------- */
-const DEFAULT_SETTINGS = { endpoint: '', refreshMin: 60, notify: false, notifyScore: 70, theme: 'system' };
+const DEFAULT_SETTINGS = { feedRepo: '', token: '', endpoint: '', refreshMin: 60, notify: false, notifyScore: 70, theme: 'system' };
 const DEFAULT_PREFS = { tab: 'pipeline', q: '', minScore: 30, remoteOnly: false, newOnly: false, showDismissed: false, sort: 'score' };
 
 function loadState() {
@@ -856,20 +864,35 @@ $('#banner').addEventListener('click', (e) => {
 });
 
 /* ---------- live feed ---------- */
-function remoteFeedUrl() {
+function feedRepo() {
+  if (state.settings.feedRepo) return state.settings.feedRepo;
   // Served from <owner>.github.io/<repo>/: read that repo's feed so forks work too.
   const host = /^([a-z0-9-]+)\.github\.io$/i.exec(location.hostname);
   const repoName = location.pathname.split('/').filter(Boolean)[0];
-  const repo = host && repoName ? `${host[1]}/${repoName}` : REPO;
-  return `https://raw.githubusercontent.com/${repo}/${FEED_BRANCH}/jobs.json`;
+  return host && repoName ? `${host[1]}/${repoName}` : REPO;
 }
 
-function feedUrls() {
-  const urls = [];
-  if (state.settings.endpoint) urls.push(state.settings.endpoint);
-  if (location.protocol.startsWith('http')) urls.push(new URL('data/jobs.json', location.href).href);
-  urls.push(remoteFeedUrl());
-  return [...new Set(urls)];
+// Where to look for the feed, in order. A private repo is read through the
+// GitHub API with the user's token; a public one straight from raw.githubusercontent.
+function feedRequests() {
+  const s = state.settings;
+  const repo = feedRepo();
+  const list = [];
+  if (s.endpoint) list.push({ url: s.endpoint, label: s.endpoint });
+  if (location.protocol.startsWith('http')) {
+    const url = new URL('data/jobs.json', location.href).href;
+    list.push({ url, label: url });
+  }
+  if (s.token) {
+    list.push({
+      url: `https://api.github.com/repos/${repo}/contents/jobs.json?ref=${FEED_BRANCH}`,
+      label: `${repo} · ${FEED_BRANCH} branch (GitHub API, with your token)`,
+      headers: { Authorization: `Bearer ${s.token}`, Accept: 'application/vnd.github.raw+json' },
+    });
+  }
+  const raw = `https://raw.githubusercontent.com/${repo}/${FEED_BRANCH}/jobs.json`;
+  list.push({ url: raw, label: raw });
+  return list.filter((r, i) => list.findIndex((o) => o.url === r.url) === i);
 }
 
 function normalizeFeed(data, previous) {
@@ -911,14 +934,18 @@ async function refreshFeed({ manual = false } = {}) {
   btn.disabled = true; btn.textContent = 'Refreshing…';
   const errors = [];
   let loaded = null;
-  for (const url of feedUrls()) {
+  for (const req of feedRequests()) {
     try {
-      const res = await fetch(url, { cache: 'no-store' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      loaded = { ...normalizeFeed(await res.json(), feed), url, fetchedAt: nowIso() };
+      const res = await fetch(req.url, { cache: 'no-store', headers: req.headers || {} });
+      if (!res.ok) {
+        throw new Error(res.status === 401 ? 'token rejected (HTTP 401)'
+          : res.status === 404 && req.headers ? 'not found (HTTP 404): check the repo name and that the token can read it'
+          : `HTTP ${res.status}`);
+      }
+      loaded = { ...normalizeFeed(await res.json(), feed), url: req.url, fetchedAt: nowIso() };
       break;
     } catch (err) {
-      errors.push(`${url.replace(/[?#].*$/, '')}: ${err.message || err}`);
+      errors.push(`${req.label.replace(/[?#].*$/, '')}: ${err.message || err}`);
     }
   }
   if (loaded) {
@@ -935,7 +962,11 @@ async function refreshFeed({ manual = false } = {}) {
     }
   } else {
     if (feed) feed.errors = errors;
-    if (manual) toast('Could not reach the feed. Showing the last copy.');
+    if (manual) {
+      toast(errors.some((e) => /token/.test(e))
+        ? "Couldn't read the private feed. Check the repository and token in Settings."
+        : 'Could not reach the feed. Showing the last copy.');
+    }
   }
   lastFeedErrors = errors;
   btn.disabled = false; btn.textContent = 'Refresh now';
@@ -986,6 +1017,7 @@ function renderFeed() {
     status.textContent = checking ? 'Loading feed…' : 'No feed loaded yet.';
     list.innerHTML = `<li class="blank"><h3>No feed yet</h3>
       <p>Matches appear here once the <b>Job feed</b> GitHub Action has run. It runs every hour; you can also start it by hand from the repo's Actions tab.</p>
+      ${state.settings.token ? '' : `<p>If the repo is private, add a read-only GitHub token in <a href="#settings">Settings</a>.</p>`}
       ${lastFeedErrors.length ? `<p class="small">Tried: ${lastFeedErrors.map(esc).join('<br>')}</p>` : ''}</li>`;
     $('#sourcesBox').hidden = true;
     return;
@@ -995,7 +1027,7 @@ function renderFeed() {
   const stale = feed.generated_at && Date.now() - Date.parse(feed.generated_at) > 3 * 3600000;
   status.innerHTML = `Feed ${built} · <b>${feed.jobs.length}</b> matches · showing ${items.length}` +
     (stale ? ` · <span style="color:var(--warn)">older than 3 h; check the Action</span>` : '') +
-    (feed.errors?.length && feed.url !== feedUrls()[0] ? ` · <span title="${esc(feed.errors.join('\n'))}">using fallback feed</span>` : '');
+    (feed.errors?.length && feed.url !== feedRequests()[0].url ? ` · <span title="${esc(feed.errors.join('\n'))}">using fallback feed</span>` : '');
 
   const srcs = feed.sources || [];
   $('#sourcesBox').hidden = !srcs.length;
@@ -1141,14 +1173,16 @@ $('#quickLinks').innerHTML = QUICK_LINKS.map(([label, url]) => `<a class="btn sm
 const settingsForm = $('#settingsForm');
 function syncSettings() {
   const s = state.settings;
+  settingsForm.elements.feedRepo.value = s.feedRepo || feedRepo();
+  settingsForm.elements.token.value = s.token;
   settingsForm.elements.endpoint.value = s.endpoint;
   settingsForm.elements.refreshMin.value = String(s.refreshMin);
   settingsForm.elements.notify.checked = s.notify;
   settingsForm.elements.notifyScore.value = s.notifyScore;
   settingsForm.elements.theme.value = s.theme;
-  const repo = remoteFeedUrl().split('/').slice(3, 5).join('/');
+  const repo = feedRepo();
   $('#feedSources').innerHTML = [
-    ...feedUrls().map((u, i) => `<li>${i ? 'Fallback' : 'Primary'}: <a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${esc(u)}</a></li>`),
+    ...feedRequests().map((r, i) => `<li>${i ? 'Fallback' : 'Primary'}: ${r.headers ? esc(r.label) : `<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.label)}</a>`}</li>`),
     `<li>Schedule, sources and scoring: <a href="https://github.com/${esc(repo)}/actions/workflows/job-feed.yml" target="_blank" rel="noopener noreferrer">Job feed workflow</a> · <a href="https://github.com/${esc(repo)}/blob/HEAD/config/search.json" target="_blank" rel="noopener noreferrer">config/search.json</a></li>`,
   ].join('');
 }
@@ -1157,19 +1191,24 @@ settingsForm.addEventListener('submit', async (e) => {
   const f = settingsForm.elements;
   const endpoint = f.endpoint.value.trim();
   if (endpoint && !safeUrl(endpoint)) { toast('The endpoint must be an http(s) URL'); return; }
+  const repoInput = f.feedRepo.value.trim().replace(/^https:\/\/github\.com\//, '').replace(/\/+$/, '');
+  if (repoInput && !REPO_RE.test(repoInput)) { toast('Feed repository should look like owner/repo'); return; }
+  const token = f.token.value.trim();
   const wantsNotify = f.notify.checked;
   if (wantsNotify && 'Notification' in window && Notification.permission === 'default') {
     try { await Notification.requestPermission(); } catch { /* ignored */ }
   }
   const notifyOk = wantsNotify && 'Notification' in window && Notification.permission === 'granted';
-  const endpointChanged = endpoint !== state.settings.endpoint;
+  const feedChanged = endpoint !== state.settings.endpoint || token !== state.settings.token
+    || repoInput !== feedRepo();
   state.settings = {
+    feedRepo: repoInput === REPO ? '' : repoInput, token,
     endpoint, refreshMin: Number(f.refreshMin.value), notify: notifyOk,
     notifyScore: Math.max(0, Math.min(100, Number(f.notifyScore.value) || 70)), theme: f.theme.value,
   };
   save(); applyTheme(); syncSettings();
   toast(wantsNotify && !notifyOk ? 'Saved, but the browser blocked notifications' : 'Settings saved');
-  if (endpointChanged) refreshFeed({ manual: true });
+  if (feedChanged) refreshFeed({ manual: true });
 });
 
 function applyTheme() {
@@ -1179,7 +1218,8 @@ function applyTheme() {
 }
 
 function exportData() {
-  const payload = { app: 'job-command-center', version: 1, exportedAt: nowIso(), ...state };
+  const payload = { app: 'job-command-center', version: 1, exportedAt: nowIso(), ...state,
+    settings: { ...state.settings, token: '' } };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -1202,7 +1242,10 @@ function importData(text) {
   }
   if (!Array.isArray(data)) {
     if (data.dismissed && typeof data.dismissed === 'object') Object.assign(state.dismissed, data.dismissed);
-    if (data.settings) state.settings = { ...state.settings, ...data.settings };
+    if (data.settings) {
+      const { token, ...rest } = data.settings;  // tokens stay per-browser
+      state.settings = { ...state.settings, ...rest };
+    }
     if (data.prefs) state.prefs = { ...state.prefs, ...data.prefs };
   }
   save(); applyTheme(); syncFilters(); syncSettings(); render();

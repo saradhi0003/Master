@@ -24,7 +24,7 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
-USER_AGENT = "JobCommandCenter/1.0 (+https://github.com/saradhi0003/Master)"
+USER_AGENT = "JobCommandCenter/1.0 (personal job-search feed; hourly)"
 
 TYPE_LABELS = {
     "greenhouse": "Greenhouse",

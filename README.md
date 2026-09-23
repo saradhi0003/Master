@@ -6,13 +6,18 @@ A job-search dashboard for Salesforce Data 360 / Agentforce Technical Builder ro
 - **Live feed:** a GitHub Action checks company career sites and job APIs **every hour, even when the page is closed**. It scores every posting against your profile and publishes the matches. The page re-reads the feed hourly while it's open.
 - **Strategy:** the September 2026 market scan, with leads you can add to the pipeline in one click, salary benchmarks and quick-search links.
 
-It's one static page (`index.html`) plus a Python script, with no server, no database and no monthly cost.
+It's one static page (`index.html`) plus a Python script, with no server and no database. It lives in a private repo.
 
 ## Getting started
 
-1. **Turn on hosting.** In the repo, go to **Settings → Pages → Build and deployment → Source** and pick **GitHub Actions**.
-2. **Run the feed once.** Go to **Actions → Job feed → Run workflow**. After that it runs every hour by itself.
-3. **Open the dashboard** at `https://saradhi0003.github.io/Master/`. You can also open `index.html` straight from disk, which reads the same hourly feed from the `job-feed` branch.
+1. **Run the feed once.** Go to **Actions → Job feed → Run workflow**. After that it runs every hour by itself.
+2. **Make a read-only token** so the dashboard can read the private feed:
+   - Go to GitHub → Settings → Developer settings → [Fine-grained tokens](https://github.com/settings/personal-access-tokens/new).
+   - Under **Repository access**, pick **Only select repositories** → `job-command-center`.
+   - Under **Permissions**, set **Contents** to **Read-only**. Pick an expiry you're comfortable with.
+3. **Open the dashboard.** Download `index.html` (or clone the repo) and open it in your browser. Go to **Settings**, paste the token and save. The Live feed fills in straight away and re-checks every hour while the page is open.
+
+The token stays in that browser, is sent only to `api.github.com`, and is left out of exports. The page and your pipeline never leave your machine.
 
 Your pipeline data (jobs, notes, follow-ups) stays in your browser's local storage and is never uploaded. Use **Export** to back it up or move it to another browser, and **Import** to load it back. Import also takes plain job-list JSON (an array, or `{"jobs": [...]}` with title/company/url/status fields), so an export from the earlier offline dashboard should load too.
 
@@ -27,7 +32,7 @@ GitHub Actions (every hour, :17)
        ├─ filter  must mention Salesforce/Agentforce, US/remote only, drops sales and
        │          non-builder titles, min score 30
        └─ write   jobs.json → force-pushed as one commit to the `job-feed` branch
-                            → deployed with index.html to GitHub Pages
+                            (the dashboard reads it through the GitHub API)
 ```
 
 - **First-seen dates** carry over between runs, so the dashboard can flag what's **NEW** since you last looked.
@@ -88,6 +93,7 @@ When `data/jobs.json` exists, the page uses it. Otherwise it falls back to the p
 
 ## Notes
 
-- **The repo is public,** so the Pages site, `index.html` and the job feed are public too. They only contain public postings and the market scan, with your name and current client left out. Your pipeline never leaves your browser.
-- **GitHub pauses scheduled workflows** in public repos after 60 days without repository activity. If the feed stops updating, re-enable **Job feed** in the Actions tab.
+- **Actions minutes.** Private repos draw on your account's free Actions minutes: 2,000 a month on GitHub Free. The hourly run takes under a minute, but GitHub bills each run as at least one minute, so it uses roughly 730 minutes a month.
+- **Hosting the page online is optional.** GitHub Pages on a private repo needs a paid plan, and the published site is public except on Enterprise. If you ever set **Settings → Pages → Source** to **GitHub Actions**, the hourly workflow deploys the dashboard and feed there automatically.
+- **Scheduled workflows can be paused.** GitHub pauses scheduled workflows after 60 days without repository activity. If the feed stops updating, re-enable **Job feed** in the Actions tab.
 - **Salesforce and CrowdStrike use Workday,** whose search results only include titles, so those postings are scored on their title alone.
