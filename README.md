@@ -13,7 +13,7 @@ It's one static page (`index.html`) plus a Python script, with no server and no 
 1. **Run the feed once.** Go to **Actions → Job feed → Run workflow**. After that it runs every hour by itself.
 2. **Make a read-only token** so the dashboard can read the private feed:
    - Go to GitHub → Settings → Developer settings → [Fine-grained tokens](https://github.com/settings/personal-access-tokens/new).
-   - Under **Repository access**, pick **Only select repositories** → `job-command-center`.
+   - Under **Repository access**, pick **Only select repositories** → `jobsearch`.
    - Under **Permissions**, set **Contents** to **Read-only**. Pick an expiry you're comfortable with.
 3. **Open the dashboard.** Download `index.html` (or clone the repo) and open it in your browser. Go to **Settings**, paste the token and save. The Live feed fills in straight away and re-checks every hour while the page is open.
 
