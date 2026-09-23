@@ -179,10 +179,55 @@ class BuildFeedTest(unittest.TestCase):
         self.assertEqual(fde["snippet"],
                          "Matched Salesforce careers search for: Agentforce, Data Cloud")
         self.assertEqual(fde["posted_at"], "2026-09-23T00:00:00Z")
-        self.assertIn("Data 360 / Data Cloud", fde["matched"])
+        # Workday search hits are boilerplate-prone, so only the title is scored.
+        self.assertEqual(fde["matched"], ["Agentforce", "Forward deployed"])
         demo = by_title(feed)["Lead Demo Engineer, Agentforce"]
         self.assertEqual(demo["posted_at"], "2026-09-21T00:00:00Z")
         self.assertFalse(demo["remote"])
+
+    def test_workday_bonus_for_target_employer(self):
+        cfg = config(sources=[dict(CONFIG_SOURCES[3], bonus=15)])
+        with_bonus, _, _ = self.build(cfg=cfg)
+        without, _, _ = self.build(cfg=config(sources=[CONFIG_SOURCES[3]]))
+        title = "Lead Demo Engineer, Agentforce"
+        self.assertEqual(by_title(with_bonus)[title]["score"],
+                         by_title(without)[title]["score"] + 15)
+
+    def test_non_us_locations_are_dropped(self):
+        boards = routes()
+        boards["https://boards-api.greenhouse.io/v1/boards/acme/"] = {"jobs": [
+            {"id": i, "title": f"Salesforce Agentforce Architect {i}", "location": {"name": loc},
+             "absolute_url": f"https://boards.greenhouse.io/acme/jobs/{i}",
+             "content": "Agentforce and Data Cloud on Salesforce."}
+            for i, loc in enumerate(["Remote - India (Bengaluru)", "France - Paris",
+                                     "Remote - US; Bengaluru, India", "Austin, TX", "Remote",
+                                     "Toronto, Canada"])]}
+        feed, _, _ = self.build(http=FakeHttp(boards))
+        kept = sorted(j["location"] for j in feed["jobs"] if j["source_id"] == "greenhouse:acme")
+        self.assertEqual(kept, ["Austin, TX", "Remote", "Remote - US; Bengaluru, India"])
+
+    def test_company_boilerplate_is_damped(self):
+        blurb = ("NeuraFlash is the leading Agentforce partner, building AI agents and "
+                 "generative AI with Einstein on Salesforce. ")
+        roles = [("Salesforce Agentforce Architect", "Design Agentforce on Data Cloud with Apex, LWC."),
+                 ("AWS Solution Architect", "Build on AWS Lambda and Amazon Connect."),
+                 ("QA Consultant, Amazon Connect", "Test contact center flows.")]
+        roles += [(f"Delivery Consultant {i}", "Client delivery.") for i in range(6)]
+        boards = routes()
+        boards["https://boards-api.greenhouse.io/v1/boards/acme/"] = {"jobs": [
+            {"id": i, "title": title, "location": {"name": "Remote - United States"},
+             "absolute_url": f"https://boards.greenhouse.io/acme/jobs/{i}", "content": blurb + body}
+            for i, (title, body) in enumerate(roles)]}
+        feed, _, _ = self.build(http=FakeHttp(boards))
+        jobs = {j["title"]: j for j in feed["jobs"] if j["source_id"] == "greenhouse:acme"}
+        self.assertNotIn("AWS Solution Architect", jobs)
+        self.assertNotIn("QA Consultant, Amazon Connect", jobs)
+        arch = jobs["Salesforce Agentforce Architect"]
+        self.assertGreaterEqual(arch["score"], 70)
+        self.assertNotIn("LLM / agentic AI", arch["matched"])  # blurb-only term
+        self.assertIn("Agentforce", arch["matched"])  # named in the title, so it counts
+        self.assertTrue(arch["snippet"].startswith("…Design Agentforce")
+                        or "Design Agentforce" in arch["snippet"])
 
     def test_missing_keys_skip_adzuna(self):
         feed, _, _ = self.build()
@@ -283,6 +328,8 @@ class HelpersTest(unittest.TestCase):
         full, _ = score("Sr. Salesforce Agentforce Architect",
                         "Agentforce Data Cloud Apex LWC RAG MCP LLM architecture Austin")
         self.assertEqual(full, 100)
+        floor, _ = score("VP, AWS Support QA", "Salesforce")
+        self.assertEqual(floor, 0)  # penalties never push a score below zero
 
     def test_parse_dates(self):
         self.assertEqual(fj.iso(fj.parse_date(1789912800000)), "2026-09-20T14:00:00Z")

@@ -19,7 +19,28 @@
       "intern(?:ship)?",
       "customer success manager",
       "renewals?",
-      "paralegal"
+      "paralegal",
+      "art director",
+      "(?:graphic|brand|visual|ux|ui|product) designer",
+      "copywriter",
+      "marketing (?:manager|director|specialist|lead)",
+      "accountant",
+      "counsel",
+      "payroll",
+      "executive assistant"
+    ],
+    "keep_locations": ["united states", "usa", "u\\.s\\.?", "us", "americas", "north america", "austin", "texas", "tx"],
+    "exclude_locations": [
+      "india", "bengaluru", "bangalore", "hyderabad", "chennai", "pune", "gurugram", "gurgaon", "noida", "mumbai", "delhi",
+      "canada", "toronto", "vancouver", "montreal", "ontario", "alberta", "british columbia",
+      "mexico", "brazil", "s[aã]o paulo", "colombia", "argentina", "chile", "peru", "costa rica", "latam",
+      "united kingdom", "uk", "england", "london", "ireland", "dublin", "france", "paris", "germany", "berlin", "munich",
+      "spain", "madrid", "barcelona", "italy", "milan", "netherlands", "amsterdam", "poland", "warsaw", "portugal", "lisbon",
+      "sweden", "stockholm", "denmark", "norway", "finland", "switzerland", "zurich", "austria", "belgium", "czech", "romania",
+      "hungary", "greece", "turkey", "israel", "tel aviv", "emea", "europe",
+      "japan", "tokyo", "singapore", "australia", "sydney", "melbourne", "new zealand", "korea", "seoul", "china",
+      "hong kong", "taiwan", "philippines", "manila", "malaysia", "indonesia", "vietnam", "thailand", "apac",
+      "uae", "dubai", "saudi", "south africa"
     ],
     "keywords": [
       {"label": "Agentforce", "pattern": "agentforce", "weight": 25},
@@ -47,22 +68,23 @@
       {"label": "Lead / principal", "pattern": "lead|principal|staff", "weight": 6},
       {"label": "Salesforce", "pattern": "salesforce|sfdc", "weight": 6},
       {"label": "Senior", "pattern": "senior|sr\\.?", "weight": 4},
-      {"label": "Builder role", "pattern": "developer|engineer|builder|consultant", "weight": 3}
+      {"label": "Builder role", "pattern": "developer|engineer|builder|consultant", "weight": 3},
+      {"label": "Executive role", "pattern": "director|vp|vice president|rvp|head of|chief", "weight": -10},
+      {"label": "Support role", "pattern": "support|help ?desk", "weight": -15},
+      {"label": "QA / testing", "pattern": "qa|quality assurance|tester|test engineer|sdet", "weight": -15},
+      {"label": "Other platform", "pattern": "aws|amazon connect|servicenow|genesys|sap|oracle|microsoft dynamics|netsuite|workday", "weight": -20}
     ]
   },
   "sources": [
-    {"type": "workday", "name": "Salesforce careers", "company": "Salesforce",
+    {"type": "workday", "name": "Salesforce careers", "company": "Salesforce", "bonus": 15,
      "host": "salesforce.wd12.myworkdayjobs.com", "tenant": "salesforce", "site": "External_Career_Site",
-     "queries": ["Agentforce", "Data Cloud", "Data 360", "Forward Deployed"]},
+     "queries": ["Agentforce", "Data Cloud", "Data 360", "Forward Deployed", "Technical Architect"]},
     {"type": "workday", "name": "CrowdStrike careers", "company": "CrowdStrike",
      "host": "crowdstrike.wd5.myworkdayjobs.com", "tenant": "crowdstrike", "site": "crowdstrikecareers",
      "queries": ["Salesforce", "Agentforce"]},
 
     {"type": "greenhouse", "name": "NeuraFlash", "board": "neuraflash"},
     {"type": "greenhouse", "name": "Spaulding Ridge", "board": "spauldingridge"},
-    {"type": "greenhouse", "name": "Certinia", "board": "certinia"},
-    {"type": "greenhouse", "name": "nCino", "board": "ncino"},
-    {"type": "greenhouse", "name": "Copado", "board": "copado"},
     {"type": "lever", "name": "Veeva", "board": "veeva"},
 
     {"type": "greenhouse", "name": "Anthropic", "board": "anthropic"},

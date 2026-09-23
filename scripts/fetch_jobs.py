@@ -198,41 +198,70 @@ def _compile(pattern: str) -> re.Pattern:
 
 
 class Scorer:
+    # A keyword in at least this share of one board's postings is company
+    # boilerplate ("NeuraFlash is an Agentforce partner..."), not a signal.
+    BOILERPLATE_SHARE = 0.6
+    BOILERPLATE_MIN_POSTINGS = 8
+    BOILERPLATE_FACTOR = 0.25
+
     def __init__(self, cfg: dict):
         self.min_score = int(cfg.get("min_score", 30))
         self.remote_bonus = int(cfg.get("remote_bonus", 0))
         self.require_any = [_compile(p) for p in cfg.get("require_any", [])]
         self.exclude_title = [_compile(p) for p in cfg.get("exclude_title", [])]
+        self.exclude_locations = [_compile(p) for p in cfg.get("exclude_locations", [])]
+        self.keep_locations = [_compile(p) for p in cfg.get("keep_locations", [])]
         self.keywords = [(k["label"], _compile(k["pattern"]), int(k["weight"]))
                          for k in cfg.get("keywords", [])]
         self.title_keywords = [(k["label"], _compile(k["pattern"]), int(k["weight"]))
                                for k in cfg.get("title_keywords", [])]
 
-    def score(self, job: dict):
+    def boilerplate(self, raws: list[dict]) -> set[str]:
+        """Keyword labels that appear in most of one source's descriptions."""
+        docs = [r.get("description", "") for r in raws if r.get("description")]
+        if len(docs) < self.BOILERPLATE_MIN_POSTINGS:
+            return set()
+        return {label for label, rx, _ in self.keywords
+                if sum(1 for d in docs if rx.search(d)) >= self.BOILERPLATE_SHARE * len(docs)}
+
+    def location_ok(self, location: str) -> bool:
+        if not location or not self.exclude_locations:
+            return True
+        if any(rx.search(location) for rx in self.keep_locations):
+            return True
+        return not any(rx.search(location) for rx in self.exclude_locations)
+
+    def score(self, job: dict, boilerplate: frozenset = frozenset(), bonus: int = 0):
         """Return (score, matched labels) or None when the job is filtered out."""
         title = job.get("title", "")
         text = " ".join([title, job.get("location", ""), job.get("description", "")])
         if any(rx.search(title) for rx in self.exclude_title):
             return None
+        if not self.location_ok(job.get("location", "")):
+            return None
         gate = f"{text} {job.get('company', '')}"
         if self.require_any and not any(rx.search(gate) for rx in self.require_any):
             return None
-        total, matched = 0, []
+        total, matched = float(bonus), []
         for label, rx, weight in self.keywords:
             if rx.search(text):
-                total += weight
-                matched.append(label)
+                # Boilerplate terms still count when the title itself names them.
+                damp = label in boilerplate and not rx.search(title)
+                total += weight * self.BOILERPLATE_FACTOR if damp else weight
+                if not damp:
+                    matched.append(label)
         for label, rx, weight in self.title_keywords:
             if rx.search(title):
                 total += weight
         if job.get("remote"):
             total += self.remote_bonus
-        return min(100, total), matched
+        return max(0, min(100, round(total))), matched
 
-    def snippet(self, description: str, width: int = 280) -> str:
+    def snippet(self, description: str, boilerplate=frozenset(), width: int = 280) -> str:
         if not description:
             return ""
-        for _, rx, _ in sorted(self.keywords, key=lambda k: -k[2]):
+        ranked = sorted(self.keywords, key=lambda k: (k[0] in boilerplate, -k[2]))
+        for _, rx, _ in ranked:
             m = rx.search(description)
             if m:
                 start = max(0, m.start() - 110)
@@ -326,10 +355,10 @@ def fetch_ashby(src, http, now):
 def fetch_workday(src, http, now):
     """Workday's public career-site search (the JSON behind *.myworkdayjobs.com).
 
-    The search endpoint returns titles and locations only. Its full-text search
-    already matched the query inside each posting, so the matched queries stand
-    in for the description when scoring. That keeps it to a handful of requests
-    per run instead of one per posting.
+    The search endpoint returns titles and locations only, so these postings are
+    scored on their title. A query hit alone says little: Salesforce's standard
+    job boilerplate mentions Agentforce and Data Cloud in nearly every posting.
+    Give the source a "bonus" in the config when the employer itself is a target.
     """
     host, tenant, site = src["host"], src["tenant"], src["site"]
     base = f"https://{host}/wday/cxs/{tenant}/{site}"
@@ -365,7 +394,7 @@ def fetch_workday(src, http, now):
             "company": src.get("company") or label,
             "url": f"https://{host}/en-US/{site}{path}",
             "location": p.get("locationsText", ""),
-            "description": " ".join(queries),
+            "description": "",
             "posted_at": workday_posted(p.get("postedOn"), now),
             "snippet": f"Matched {label} search for: {', '.join(queries)}" if queries else "",
         })
@@ -487,10 +516,10 @@ def source_id(src: dict) -> str:
 _REMOTE_RE = re.compile(r"(?<![a-z])remote(?![a-z])", re.I)
 
 
-def to_job(raw: dict, src: dict, sid: str, scorer: Scorer):
+def to_job(raw: dict, src: dict, sid: str, scorer: Scorer, boilerplate=frozenset()):
     raw["remote"] = bool(raw.get("remote")) or bool(
         _REMOTE_RE.search(f"{raw.get('location', '')} {raw.get('title', '')}"))
-    result = scorer.score(raw)
+    result = scorer.score(raw, boilerplate, int(src.get("bonus", 0)))
     if result is None:
         return None
     score, matched = result
@@ -507,7 +536,7 @@ def to_job(raw: dict, src: dict, sid: str, scorer: Scorer):
         "posted_at": iso(raw.get("posted_at")),
         "score": score,
         "matched": matched,
-        "snippet": raw.get("snippet") or scorer.snippet(raw.get("description", "")),
+        "snippet": raw.get("snippet") or scorer.snippet(raw.get("description", ""), boilerplate),
         "source": src.get("name") or TYPE_LABELS.get(src["type"], src["type"]),
         "via": TYPE_LABELS.get(src["type"], src["type"]),
         "source_id": sid,
@@ -592,11 +621,12 @@ def build_feed(config: dict, previous: dict, http, now: datetime, only=None):
         attempted += 1
         kept = []
         seen = set()
+        boilerplate = frozenset(scorer.boilerplate(raws))
         for raw in raws:
             if raw.get("native_id") in (None, "") or raw["native_id"] in seen:
                 continue
             seen.add(raw["native_id"])
-            job = to_job(raw, src, sid, scorer)
+            job = to_job(raw, src, sid, scorer, boilerplate)
             if job:
                 kept.append(job)
         status.update(state="ok", fetched_at=iso(now), found=len(raws), kept=len(kept))
