@@ -1,0 +1,6 @@
+# Local feed previews and workflow scratch dirs
+/data/
+/_feed/
+/_site/
+__pycache__/
+*.pyc

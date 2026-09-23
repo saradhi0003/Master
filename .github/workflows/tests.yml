@@ -1,0 +1,23 @@
+name: Tests
+
+on:
+  push:
+    branches-ignore: [job-feed]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate config
+        run: python -m json.tool config/search.json > /dev/null
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v

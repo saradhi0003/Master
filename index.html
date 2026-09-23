@@ -1,0 +1,1294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'self' https:; base-uri 'none'">
+<meta name="description" content="Job pipeline tracker and hourly Agentforce / Data 360 job feed">
+<title>Job Command Center</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b5cad'/%3E%3Cpath d='M9 11h14M9 16h10M9 21h6' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #f5f6f8; --surface: #ffffff; --surface-2: #eef1f5; --text: #151a21; --muted: #5a6473;
+  --border: #dce1e8; --accent: #0b5cad; --accent-ink: #ffffff; --accent-soft: #e2edf9;
+  --good: #146c43; --good-soft: #dff3e8; --warn: #8a5200; --warn-soft: #fff1d6;
+  --bad: #b3261e; --bad-soft: #fde7e4; --focus: #3b82f6;
+  --st-saved: #64748b; --st-applied: #2563eb; --st-recruiter-screen: #7c3aed;
+  --st-interview: #c26a00; --st-offer: #15803d; --st-rejected: #9aa3ae;
+  --shadow: 0 1px 2px rgba(16, 24, 40, .05), 0 1px 3px rgba(16, 24, 40, .08);
+  --radius: 10px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1216; --surface: #171b21; --surface-2: #1f252d; --text: #e7ebf0; --muted: #9aa5b3;
+    --border: #2b323c; --accent: #5aa2f0; --accent-ink: #081523; --accent-soft: #16283d;
+    --good: #5fd08f; --good-soft: #13291d; --warn: #f2b25c; --warn-soft: #2e2213;
+    --bad: #ff8a80; --bad-soft: #341a19; --focus: #7ab4ff;
+    --st-saved: #94a3b8; --st-applied: #60a5fa; --st-recruiter-screen: #a78bfa;
+    --st-interview: #f59e0b; --st-offer: #4ade80; --st-rejected: #6b7480;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1216; --surface: #171b21; --surface-2: #1f252d; --text: #e7ebf0; --muted: #9aa5b3;
+  --border: #2b323c; --accent: #5aa2f0; --accent-ink: #081523; --accent-soft: #16283d;
+  --good: #5fd08f; --good-soft: #13291d; --warn: #f2b25c; --warn-soft: #2e2213;
+  --bad: #ff8a80; --bad-soft: #341a19; --focus: #7ab4ff;
+  --st-saved: #94a3b8; --st-applied: #60a5fa; --st-recruiter-screen: #a78bfa;
+  --st-interview: #f59e0b; --st-offer: #4ade80; --st-rejected: #6b7480;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+a { color: var(--accent); }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+[hidden] { display: none !important; }
+.wrap { max-width: 1440px; margin: 0 auto; padding: 0 16px; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+
+/* Buttons */
+.btn, button.btn {
+  display: inline-flex; align-items: center; gap: 6px; justify-content: center;
+  min-height: 36px; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); cursor: pointer; white-space: nowrap;
+  text-decoration: none; font-weight: 500;
+}
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.danger { color: var(--bad); }
+.btn.sm { min-height: 30px; padding: 3px 10px; font-size: 13px; }
+.btn:disabled { opacity: .5; cursor: default; }
+.linkbtn { border: 0; background: none; padding: 2px 4px; cursor: pointer; color: var(--muted); font-size: 13px; border-radius: 4px; }
+.linkbtn:hover { color: var(--text); background: var(--surface-2); }
+.linkbtn.danger:hover { color: var(--bad); }
+
+/* Header */
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 18px 0 14px; }
+.brand { display: flex; align-items: center; gap: 12px; flex: 1 1 320px; min-width: 0; }
+.mark { width: 38px; height: 38px; border-radius: 9px; background: var(--accent); display: grid; place-items: center; flex: none; }
+.brand h1 { margin: 0; font-size: 20px; line-height: 1.2; letter-spacing: -.01em; }
+.brand p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+.top-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.next-check { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 9em; text-align: right; }
+
+/* Banner */
+.banner {
+  display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; margin-bottom: 14px;
+  border-radius: var(--radius); background: var(--warn-soft); color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent);
+}
+.banner strong { color: var(--warn); }
+.banner ul { margin: 2px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.banner button { border: 0; background: none; color: inherit; text-decoration: underline; cursor: pointer; padding: 0; text-align: left; }
+
+/* Stats */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow); }
+.stat .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+.stat .value { font-size: 26px; font-weight: 650; line-height: 1.2; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.stat .sub { font-size: 12px; color: var(--muted); }
+
+/* Tabs */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; overflow-x: auto; scrollbar-width: none; }
+.tabs button {
+  border: 0; background: none; padding: 10px 14px; cursor: pointer; color: var(--muted); font-weight: 550;
+  border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; display: inline-flex; gap: 6px; align-items: center;
+}
+.tabs button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
+.count { background: var(--accent); color: var(--accent-ink); font-size: 11px; font-weight: 700; border-radius: 99px; padding: 1px 7px; }
+
+/* Board */
+.board { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; align-items: start; padding-bottom: 32px; }
+@media (max-width: 1240px) { .board { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .board { grid-template-columns: minmax(0, 1fr); } }
+.col { background: var(--surface-2); border-radius: var(--radius); padding: 10px; min-width: 0; }
+.col-head { display: flex; align-items: center; gap: 8px; padding: 2px 4px 10px; }
+.col-head h3 { margin: 0; font-size: 14px; flex: 1; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--stage); flex: none; }
+.col-head .n { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.col-body { display: flex; flex-direction: column; gap: 8px; min-height: 64px; border-radius: 8px; transition: background .15s; }
+.col-body.over { background: color-mix(in srgb, var(--stage) 14%, transparent); outline: 2px dashed var(--stage); outline-offset: 2px; }
+.empty { margin: 0; padding: 18px 8px; text-align: center; color: var(--muted); font-size: 13px; border: 1px dashed var(--border); border-radius: 8px; }
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--stage);
+  border-radius: 8px; padding: 10px 10px 6px; box-shadow: var(--shadow); cursor: grab; min-width: 0;
+}
+.card.dragging { opacity: .5; }
+.card-head { display: flex; gap: 8px; align-items: flex-start; }
+.card-title { font-weight: 600; font-size: 14px; line-height: 1.35; flex: 1; min-width: 0; overflow-wrap: anywhere; color: var(--text); text-decoration: none; }
+a.card-title:hover { color: var(--accent); text-decoration: underline; }
+.card-co { font-size: 13px; color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; }
+.card-notes { font-size: 13px; margin: 6px 0 0; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.card-actions { display: flex; align-items: center; gap: 2px; margin-top: 6px; }
+.card-actions .spacer { flex: 1; }
+.icon { border: 1px solid var(--border); background: var(--surface); width: 28px; height: 26px; border-radius: 6px; cursor: pointer; color: var(--muted); line-height: 1; font-size: 16px; }
+.icon:hover:not(:disabled) { color: var(--text); background: var(--surface-2); }
+.icon:disabled { opacity: .35; cursor: default; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.chip { font-size: 12px; padding: 1px 8px; border-radius: 99px; background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.chip.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; font-weight: 600; }
+.chip.bad { background: var(--bad-soft); color: var(--bad); border-color: transparent; font-weight: 600; }
+.chip.kw { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.score { flex: none; font-size: 12px; font-weight: 700; padding: 1px 7px; border-radius: 6px; font-variant-numeric: tabular-nums; }
+.s-hi { background: var(--good-soft); color: var(--good); }
+.s-mid { background: var(--accent-soft); color: var(--accent); }
+.s-lo { background: var(--surface-2); color: var(--muted); }
+
+/* Feed */
+.feed-top { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.feed-status { font-size: 14px; color: var(--muted); }
+.feed-status b { color: var(--text); font-weight: 600; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 12px; }
+.filters input[type="search"] { flex: 1 1 220px; min-width: 0; }
+.filters label { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; white-space: nowrap; }
+.filters output { font-variant-numeric: tabular-nums; min-width: 2ch; font-weight: 600; }
+input[type="search"], input[type="text"], input[type="url"], input[type="number"], input[type="date"], select, textarea {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; min-height: 36px; width: 100%;
+}
+.filters select { width: auto; }
+input[type="range"] { accent-color: var(--accent); width: 120px; }
+input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; }
+.feed { list-style: none; margin: 0; padding: 0 0 32px; display: flex; flex-direction: column; gap: 8px; }
+.job { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow); }
+.job.dismissed { opacity: .55; }
+.ring { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 16px; font-variant-numeric: tabular-nums; }
+.job-title { font-weight: 600; font-size: 15px; color: var(--text); text-decoration: none; overflow-wrap: anywhere; }
+a.job-title:hover { color: var(--accent); text-decoration: underline; }
+.job-meta { font-size: 13px; color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; }
+.job-meta .sep { margin: 0 6px; opacity: .6; }
+.snippet { margin: 6px 0 0; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.new-pill { font-size: 11px; font-weight: 700; color: var(--accent-ink); background: var(--accent); border-radius: 4px; padding: 1px 6px; margin-left: 6px; vertical-align: 2px; }
+.job-actions { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.tracked { font-size: 12px; color: var(--good); font-weight: 600; text-align: center; white-space: nowrap; }
+@media (max-width: 640px) {
+  .job { grid-template-columns: 44px minmax(0, 1fr); }
+  .ring { width: 40px; height: 40px; font-size: 14px; }
+  .job-actions { grid-column: 1 / -1; flex-direction: row; justify-content: flex-end; }
+}
+details.sources { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; }
+details.sources summary { cursor: pointer; padding: 10px 14px; font-size: 14px; font-weight: 550; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 7px 12px; border-top: 1px solid var(--border); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+td.num { font-variant-numeric: tabular-nums; }
+.state { font-size: 12px; font-weight: 600; padding: 1px 7px; border-radius: 99px; white-space: nowrap; }
+.state.ok { background: var(--good-soft); color: var(--good); }
+.state.error { background: var(--bad-soft); color: var(--bad); }
+.state.cached, .state.skipped { background: var(--surface-2); color: var(--muted); }
+.blank { text-align: center; padding: 40px 16px; background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius); color: var(--muted); }
+.blank h3 { color: var(--text); margin: 0 0 6px; font-size: 16px; }
+
+/* Strategy + settings */
+.doc { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding-bottom: 32px; }
+@media (max-width: 900px) { .doc { grid-template-columns: minmax(0, 1fr); } }
+.panel-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); min-width: 0; }
+.panel-card.wide { grid-column: 1 / -1; }
+.panel-card h2 { font-size: 16px; margin: 0 0 8px; }
+.panel-card h3 { font-size: 14px; margin: 14px 0 6px; }
+.panel-card p, .panel-card li { font-size: 14px; }
+.panel-card ul { padding-left: 20px; margin: 6px 0; }
+.panel-card li { margin: 4px 0; }
+.kicker { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+.panel-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.panel-head h2 { margin: 0; }
+.links { display: flex; flex-wrap: wrap; gap: 8px; }
+.code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px; cursor: pointer; text-align: left; overflow-wrap: anywhere; }
+.code:hover { border-color: var(--accent); }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; }
+.form-grid label, .stack label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 550; color: var(--muted); min-width: 0; }
+.form-grid .span2 { grid-column: 1 / -1; }
+.check { flex-direction: row !important; align-items: center; gap: 8px !important; color: var(--text) !important; font-weight: 400 !important; font-size: 14px !important; }
+@media (max-width: 560px) { .form-grid { grid-template-columns: minmax(0, 1fr); } }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* Dialog + toast */
+dialog { border: 1px solid var(--border); border-radius: 12px; padding: 0; background: var(--surface); color: var(--text); width: min(640px, calc(100vw - 32px)); box-shadow: 0 20px 50px rgba(0, 0, 0, .25); }
+dialog::backdrop { background: rgba(10, 14, 20, .45); }
+dialog form { padding: 18px 20px; }
+dialog h2 { margin: 0 0 14px; font-size: 18px; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 9px 16px; border-radius: 8px; font-size: 14px; box-shadow: 0 8px 24px rgba(0, 0, 0, .2); max-width: calc(100vw - 32px); z-index: 10; }
+footer { padding: 8px 0 28px; font-size: 12px; color: var(--muted); }
+
+@media (max-width: 640px) {
+  .top { padding-top: 14px; }
+  .top-actions { width: 100%; }
+  .top-actions .btn { flex: 1 1 0; padding: 6px 8px; }
+  .next-check { order: 9; width: 100%; text-align: left; min-width: 0; }
+  .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .stat { padding: 8px 10px; }
+  .stat .label { font-size: 11px; letter-spacing: .02em; }
+  .stat .value { font-size: 20px; }
+  .stat .sub { display: none; }
+  .tabs button { padding: 10px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 20 20"><path d="M3 5h14M3 10h9M3 15h5" stroke="white" stroke-width="2.4" stroke-linecap="round"/></svg>
+      </div>
+      <div>
+        <h1>Job Command Center</h1>
+        <p>Salesforce Data 360 / Agentforce Technical Builder search</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <span class="next-check" id="nextCheck" aria-live="off"></span>
+      <button class="btn" id="refreshBtn" type="button">Refresh now</button>
+      <button class="btn" id="exportBtn" type="button">Export</button>
+      <button class="btn" id="importBtn" type="button">Import</button>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+      <button class="btn primary" id="addBtn" type="button">+ Add job</button>
+    </div>
+  </header>
+
+  <div class="banner" id="banner" role="status" hidden></div>
+  <section class="stats" id="stats" aria-label="Pipeline summary"></section>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" id="t-pipeline" data-tab="pipeline" aria-controls="p-pipeline">Pipeline</button>
+    <button role="tab" id="t-feed" data-tab="feed" aria-controls="p-feed">Live feed <span class="count" id="newCount" hidden></span></button>
+    <button role="tab" id="t-strategy" data-tab="strategy" aria-controls="p-strategy">Strategy</button>
+    <button role="tab" id="t-settings" data-tab="settings" aria-controls="p-settings">Settings</button>
+  </nav>
+
+  <main>
+    <section id="p-pipeline" role="tabpanel" aria-labelledby="t-pipeline">
+      <div class="board" id="board"></div>
+    </section>
+
+    <section id="p-feed" role="tabpanel" aria-labelledby="t-feed" hidden>
+      <div class="feed-top">
+        <div class="feed-status" id="feedStatus">Loading feed…</div>
+        <div class="row">
+          <button class="btn sm" id="markSeenBtn" type="button">Mark all seen</button>
+        </div>
+      </div>
+      <div class="filters">
+        <input type="search" id="fq" placeholder="Filter by title, company, keyword…  ( / )" aria-label="Filter jobs">
+        <label>Min score <input type="range" id="fmin" min="0" max="100" step="5"> <output id="fminOut"></output></label>
+        <label><input type="checkbox" id="fremote"> Remote only</label>
+        <label><input type="checkbox" id="fnew"> New only</label>
+        <label><input type="checkbox" id="fdismissed"> Show dismissed</label>
+        <label>Sort
+          <select id="fsort">
+            <option value="score">Best match</option>
+            <option value="newest">Newest</option>
+          </select>
+        </label>
+      </div>
+      <details class="sources" id="sourcesBox" hidden>
+        <summary id="sourcesSummary">Sources</summary>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Source</th><th>Status</th><th>Found</th><th>Kept</th><th>Last fetched</th><th>Note</th></tr></thead>
+          <tbody id="sourcesBody"></tbody>
+        </table></div>
+      </details>
+      <ol class="feed" id="feedList"></ol>
+    </section>
+
+    <section id="p-strategy" role="tabpanel" aria-labelledby="t-strategy" hidden>
+      <div class="doc">
+        <div class="panel-card wide">
+          <div class="kicker">Market scan · Sept 2026</div>
+          <h2>Salesforce Data 360 / Agentforce: you're in the hottest niche in the ecosystem</h2>
+          <p class="muted small">Profile: Austin, TX · 9+ yrs · Agentforce + Data 360 + CPQ. Scan dated 2026-09-23. Verify each posting before applying; job boards churn fast.</p>
+          <ul>
+            <li><b>Q3 FY26 (Dec 2025):</b> Agentforce + Data 360 reached ~$1.4B ARR, +114% YoY, with 9,500+ paid Agentforce deals. It's Salesforce's #1 growth engine, so SIs, vendors and Salesforce itself are hiring anyone credible in this stack.</li>
+            <li>Salesforce careers is pushing <b>Forward Deployed Engineer</b> roles for Agentforce; the engineering blog highlights the Data 360 and Agentforce Data Library teams.</li>
+            <li>Agentforce / AI Specialist is the fastest-growing Salesforce role category of 2026, at a <b>$20K–$40K premium</b> over standard dev roles.</li>
+            <li>Data Cloud certified consultants are scarce (~6,000 certified vs 150K+ partner companies), which gives billing-rate leverage at SIs.</li>
+          </ul>
+        </div>
+
+        <div class="panel-card wide">
+          <div class="panel-head">
+            <h2>Leads from the scan</h2>
+            <button class="btn sm primary" id="trackAllLeads" type="button">Add all to pipeline</button>
+          </div>
+          <p class="muted small">Match figures are estimates from the scan's fit notes. Where a lead has no direct posting URL, the link opens a search for it.</p>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Role</th><th>Company</th><th>Pay</th><th>Fit</th><th></th></tr></thead>
+            <tbody id="leadsBody"></tbody>
+          </table></div>
+        </div>
+
+        <div class="panel-card">
+          <h2>Salary benchmarks</h2>
+          <div class="table-wrap"><table>
+            <tbody>
+              <tr><td>Agentforce / AI Specialist</td><td>$110–140K mid · $150–180K senior</td></tr>
+              <tr><td>Austin Salesforce Architect</td><td>~$170K average</td></tr>
+              <tr><td>Austin Solution Architect</td><td>~$170K</td></tr>
+              <tr><td>Austin senior Salesforce Dev (5–10 yrs)</td><td>$103–134K typical</td></tr>
+              <tr><td>Austin Salesforce Developer</td><td>$104K base · $126K total</td></tr>
+              <tr><td>Data Cloud Architect, contract</td><td>$65–90/hr seen live</td></tr>
+              <tr><td>MC / Data Cloud Architect, contract</td><td>$75–85/hr</td></tr>
+              <tr><td>ZipRecruiter Agentforce roles</td><td>$75K–$180K</td></tr>
+            </tbody>
+          </table></div>
+        </div>
+
+        <div class="panel-card">
+          <h2>Strategic read</h2>
+          <ul>
+            <li><b>Positioning is top-decile.</b> Most Agentforce resumes are declarative-only admins or advisory-only architects. You build hands-on (Apex + LWC + Data 360 + Agentforce + security models) and run the program at a named marquee client. Lead with that for FDE, Technical Builder and Architect roles.</li>
+            <li><b>Close the Python gap.</b> Several live JDs list it; even light scripting earns the keyword. This repo's feed builder is Python you can point to.</li>
+            <li><b>Quantify the RAG / Data Library story</b> with one or two metrics before interviews.</li>
+            <li><b>Watch Salesforce careers for FDE openings.</b> FDE is the closest in-house match to a hands-on client build role. The feed checks Salesforce's Workday site every hour.</li>
+            <li><b>Partner pipeline:</b> NeuraFlash, Slalom, Deloitte Digital, Capgemini, Accenture / Infosys Salesforce practices, plus BuiltIn Austin and Dice saved searches.</li>
+          </ul>
+        </div>
+
+        <div class="panel-card">
+          <h2>Search strings that work</h2>
+          <p class="muted small">Click to copy.</p>
+          <div class="stack" id="searchStrings"></div>
+        </div>
+
+        <div class="panel-card">
+          <h2>Quick searches</h2>
+          <p class="muted small">Boards without a public API. These open in a new tab; nothing is scraped.</p>
+          <div class="links" id="quickLinks"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="p-settings" role="tabpanel" aria-labelledby="t-settings" hidden>
+      <div class="doc">
+        <div class="panel-card">
+          <h2>Hourly job feed</h2>
+          <p class="small">A GitHub Action in this repo rebuilds the feed every hour, even when this page is closed. This page re-reads it on the interval below while it's open.</p>
+          <form class="stack" id="settingsForm">
+            <label>Custom feed endpoint (optional)
+              <input type="url" name="endpoint" placeholder="Leave blank to use this repo's hourly feed">
+            </label>
+            <p class="muted small" style="margin:-6px 0 0">Any URL that returns JSON jobs works: <code>[{title, company, url, score, source}]</code> or <code>{"jobs": [...]}</code>.</p>
+            <label>Re-check the feed
+              <select name="refreshMin">
+                <option value="15">Every 15 minutes</option>
+                <option value="30">Every 30 minutes</option>
+                <option value="60">Every hour</option>
+                <option value="120">Every 2 hours</option>
+                <option value="0">Only when I click Refresh</option>
+              </select>
+            </label>
+            <label class="check"><input type="checkbox" name="notify"> Browser notification for new matches scoring at least
+              <input type="number" name="notifyScore" min="0" max="100" style="width:5.5em" aria-label="Notification score threshold"></label>
+            <label>Theme
+              <select name="theme">
+                <option value="system">Match system</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </label>
+            <div class="row"><button class="btn primary" type="submit">Save settings</button></div>
+          </form>
+          <h3>Where the feed comes from</h3>
+          <ul class="small" id="feedSources"></ul>
+        </div>
+
+        <div class="panel-card">
+          <h2>Your data</h2>
+          <p class="small">Your pipeline lives only in this browser's local storage. Nothing you type here is uploaded. Export regularly to keep a backup or move to another device.</p>
+          <div class="row">
+            <button class="btn" type="button" id="exportBtn2">Export JSON</button>
+            <button class="btn" type="button" id="importBtn2">Import JSON</button>
+            <button class="btn danger" type="button" id="resetBtn">Delete all data</button>
+          </div>
+          <h3>Keyboard</h3>
+          <ul class="small">
+            <li><kbd>n</kbd>: add a job</li>
+            <li><kbd>/</kbd>: search the feed</li>
+            <li><kbd>r</kbd>: refresh the feed</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer id="footer"></footer>
+</div>
+
+<dialog id="editor" aria-labelledby="editorTitle">
+  <form id="editorForm" novalidate>
+    <h2 id="editorTitle">Add job</h2>
+    <div class="form-grid">
+      <label>Job title<input type="text" name="title" required autocomplete="off"></label>
+      <label>Company<input type="text" name="company" required autocomplete="off"></label>
+      <label class="span2">Posting URL<input type="url" name="url" placeholder="https://"></label>
+      <label>Stage<select name="status"></select></label>
+      <label>Match %<input type="number" name="match" min="0" max="100" inputmode="numeric"></label>
+      <label>Resume version<input type="text" name="resume" list="resumeList" placeholder="e.g. v3-agentforce" autocomplete="off"></label>
+      <label>Follow-up date<input type="date" name="followUp"></label>
+      <label>Location<input type="text" name="location" autocomplete="off"></label>
+      <label>Pay<input type="text" name="salary" placeholder="$150–180K" autocomplete="off"></label>
+      <label class="span2">Notes<textarea name="notes" rows="4"></textarea></label>
+    </div>
+    <p class="muted small" id="editorError" role="alert" hidden></p>
+    <div class="dialog-actions">
+      <button class="btn" type="button" id="editorCancel">Cancel</button>
+      <button class="btn primary" type="submit">Save</button>
+    </div>
+  </form>
+</dialog>
+<datalist id="resumeList"></datalist>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<noscript><p class="wrap">Job Command Center needs JavaScript.</p></noscript>
+
+<script>
+'use strict';
+
+const STAGES = ['Saved', 'Applied', 'Recruiter Screen', 'Interview', 'Offer', 'Rejected'];
+const CLOSED = new Set(['Offer', 'Rejected']);
+const STORE_KEY = 'jcc.v1';
+const FEED_KEY = 'jcc.feed.v1';
+const REPO = 'saradhi0003/Master';
+const FEED_BRANCH = 'job-feed';
+
+const SCAN_LEADS = [
+  { title: 'Forward Deployed Engineer, Agentforce', company: 'Salesforce', location: 'Multiple US', match: 92,
+    url: 'https://careers.salesforce.com/en/jobs/?search=forward%20deployed',
+    notes: 'Closest in-house match to a hands-on client build role; Salesforce is staffing it aggressively.' },
+  { title: 'Salesforce Agentforce Architect', company: 'NeuraFlash (Accenture)', location: 'Fully remote', match: 90,
+    q: 'NeuraFlash "Agentforce Architect"', notes: 'Agentforce architecture + data integration. Seen on beBee two days before the scan.' },
+  { title: 'Lead Salesforce Developer, Agentforce + LLM workflows', company: 'BuiltIn Austin listing', location: 'Remote (Austin)', salary: '$145–165K', match: 88,
+    q: 'builtin austin "Lead Salesforce Developer" Agentforce', notes: 'Agentforce, Apex, LLM/agent workflows, Quote-to-Cash. Reposted 3h before the scan.' },
+  { title: 'Salesforce Architect: Agentforce, CPQ, Revenue Cloud Advanced', company: 'NTT DATA', location: 'US remote', match: 85,
+    q: 'NTT DATA "Salesforce Architect" Agentforce Revenue Cloud', notes: 'End-to-end architecture across Agentforce, CPQ and Revenue Cloud Advanced.' },
+  { title: 'Revenue Platform Architect', company: 'BuiltIn Austin listing', location: 'Remote (Austin)', salary: '$146–225K', match: 85,
+    q: 'builtin austin "platform architect" Agentforce CPQ Gearset', notes: 'Agentforce, CPQ, LWC, Gearset.' },
+  { title: 'Salesforce Data Cloud Architect (contract)', company: 'Eliassen Group', location: 'Remote', salary: '$80–90/hr', match: 82,
+    q: 'Eliassen "Salesforce Data Cloud Architect"', notes: 'Dice listing, remote contract.' },
+  { title: 'Salesforce Data Cloud Architect', company: 'Apptad', location: 'Remote', salary: '$65–70/hr', match: 80,
+    q: 'Apptad "Salesforce Data Cloud Architect"', notes: 'Remotive, posted 2026-09-21. Easier entry.' },
+  { title: 'Lead Demo Engineer, Agentforce', company: 'Salesforce', location: 'San Francisco', match: 78,
+    url: 'https://careers.salesforce.com/en/jobs/?search=demo%20engineer%20agentforce', notes: 'Salesforce hiring hard on Agentforce.' },
+  { title: 'Sr. Salesforce Developer (Agentforce and Data Cloud), contract', company: 'ZipRecruiter listing', location: 'Coppell, TX', match: 78,
+    q: '"Salesforce Developer" Agentforce "Data Cloud" Coppell', notes: 'Near DFW.' },
+  { title: 'Senior Salesforce Developer: Data Cloud, Einstein', company: 'BuiltIn Austin listing', location: 'Remote (Austin)', salary: '$102–141K', match: 72,
+    q: 'builtin austin "Senior Salesforce Developer" "Data Cloud"', notes: 'Data Cloud, Einstein, AI workflow.' },
+  { title: 'Salesforce Engineer: Agentforce + LangChain', company: 'CrowdStrike', location: 'Remote', match: 70,
+    q: 'CrowdStrike Salesforce Agentforce LangChain', notes: 'Agentforce + LangChain + pgvector/Pinecone + platform events. A stretch toward AI engineering.' },
+  { title: 'Lead Salesforce Developer: CPQ, event-driven', company: 'BuiltIn Austin listing', location: 'Remote (Austin)', salary: '$155–248K', match: 70,
+    q: 'builtin austin "Lead Salesforce Developer" CPQ', notes: 'CPQ, event-driven architecture, mentoring.' },
+  { title: 'Senior Salesforce Developer: AI-assisted development', company: 'BuiltIn Austin listing', location: 'Remote (Austin)', salary: '$185–205K', match: 65,
+    q: 'builtin austin "Senior Salesforce Developer" AI fintech', notes: 'Fintech/HR, AI-assisted development.' },
+  { title: 'Consumption Account Manager, Data 360 & Agentforce', company: 'Salesforce', location: 'Multiple US', match: 40,
+    url: 'https://careers.salesforce.com/en/jobs/?search=consumption%20account%20manager', notes: 'Commercial role. Only if you want a sales-side path.' },
+];
+
+const SEARCH_STRINGS = [
+  '"Salesforce Data 360"', '"Data 360 Technical Builder"', '"Agentforce FDE"', '"Agentforce architect"',
+  '"Agentforce" "Data Cloud" "RAG" (contract OR remote)',
+];
+
+const QUICK_LINKS = [
+  ['LinkedIn: Agentforce, remote, 24h', 'https://www.linkedin.com/jobs/search/?keywords=Agentforce&f_TPR=r86400&f_WT=2'],
+  ['LinkedIn: Salesforce Data Cloud, week', 'https://www.linkedin.com/jobs/search/?keywords=%22Salesforce%20Data%20Cloud%22&f_TPR=r604800'],
+  ['Salesforce careers: Agentforce', 'https://careers.salesforce.com/en/jobs/?search=agentforce'],
+  ['Salesforce careers: FDE', 'https://careers.salesforce.com/en/jobs/?search=forward%20deployed'],
+  ['Dice: Agentforce', 'https://www.dice.com/jobs?q=Agentforce'],
+  ['BuiltIn Austin: Salesforce', 'https://www.builtinaustin.com/jobs?search=Salesforce'],
+  ['Indeed: Agentforce, 3 days', 'https://www.indeed.com/jobs?q=Agentforce&fromage=3'],
+  ['Google Jobs: Agentforce architect', 'https://www.google.com/search?q=Agentforce+architect+jobs&ibp=htl;jobs'],
+];
+
+/* ---------- utilities ---------- */
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+const nowIso = () => new Date().toISOString();
+
+function safeUrl(u) {
+  if (!u) return '';
+  try {
+    const url = new URL(String(u).trim());
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : '';
+  } catch { return ''; }
+}
+
+function storageGet(key) {
+  try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch { return null; }
+}
+function storageSet(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch { return false; }
+}
+
+function ago(iso) {
+  if (!iso) return '';
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return '';
+  const s = Math.round((Date.now() - t) / 1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
+  if (s < 86400 * 30) return `${Math.floor(s / 86400)} d ago`;
+  return new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function localDate(ymd) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd || '');
+  return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+}
+const fmtDay = (d) => d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+
+function scoreClass(n) { n = Number(n); return n >= 70 ? 's-hi' : n >= 50 ? 's-mid' : 's-lo'; }
+
+let toastTimer;
+function toast(msg) {
+  const el = $('#toast');
+  el.textContent = msg;
+  el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.hidden = true; }, 3200);
+}
+
+/* ---------- state ---------- */
+const DEFAULT_SETTINGS = { endpoint: '', refreshMin: 60, notify: false, notifyScore: 70, theme: 'system' };
+const DEFAULT_PREFS = { tab: 'pipeline', q: '', minScore: 30, remoteOnly: false, newOnly: false, showDismissed: false, sort: 'score' };
+
+function loadState() {
+  const raw = storageGet(STORE_KEY) || {};
+  return {
+    jobs: Array.isArray(raw.jobs) ? raw.jobs.map(normalizeJob).filter(Boolean) : [],
+    dismissed: raw.dismissed && typeof raw.dismissed === 'object' ? raw.dismissed : {},
+    feedSeenAt: raw.feedSeenAt || null,
+    settings: { ...DEFAULT_SETTINGS, ...(raw.settings || {}) },
+    prefs: { ...DEFAULT_PREFS, ...(raw.prefs || {}) },
+  };
+}
+let state = loadState();
+let feed = storageGet(FEED_KEY) || null;
+let lastCheck = 0;
+let checking = false;
+let lastFeedErrors = [];
+
+function save() {
+  if (!storageSet(STORE_KEY, state)) toast('Could not save. Browser storage is blocked or full; export your data.');
+}
+
+function matchStage(value) {
+  const v = String(value || '').toLowerCase().trim();
+  if (!v) return 'Saved';
+  const exact = STAGES.find((s) => s.toLowerCase() === v);
+  if (exact) return exact;
+  if (v.includes('screen') || v.includes('recruit')) return 'Recruiter Screen';
+  if (v.includes('interview')) return 'Interview';
+  if (v.includes('offer')) return 'Offer';
+  if (v.includes('reject') || v.includes('declin') || v.includes('closed')) return 'Rejected';
+  if (v.includes('appl')) return 'Applied';
+  return 'Saved';
+}
+
+function normalizeJob(j) {
+  if (!j || typeof j !== 'object') return null;
+  const title = String(j.title || j.role || '').trim();
+  const company = String(j.company || j.employer || '').trim();
+  if (!title && !company) return null;
+  const status = matchStage(j.status || j.stage || j.column);
+  const rawMatch = j.match ?? j.matchPct ?? j.score;
+  const match = rawMatch === '' || rawMatch == null || Number.isNaN(Number(rawMatch)) ? null : Math.max(0, Math.min(100, Math.round(Number(rawMatch))));
+  const created = j.createdAt || j.created || nowIso();
+  const followUp = String(j.followUp || j.followup || j.follow_up || j.followUpDate || '');
+  return {
+    id: String(j.id || uid()),
+    title, company,
+    url: safeUrl(j.url || j.link) || '',
+    status,
+    match,
+    resume: String(j.resume || j.resumeVersion || ''),
+    followUp: /^\d{4}-\d{2}-\d{2}$/.test(followUp) ? followUp : '',
+    notes: String(j.notes || ''),
+    location: String(j.location || ''),
+    salary: String(j.salary || ''),
+    source: String(j.source || 'manual'),
+    feedId: j.feedId ? String(j.feedId) : '',
+    createdAt: created,
+    updatedAt: j.updatedAt || created,
+    history: Array.isArray(j.history) && j.history.length ? j.history.filter((h) => h && STAGES.includes(h.status)) : [{ status, at: created }],
+  };
+}
+
+/* ---------- pipeline ---------- */
+function stageReached(job) {
+  let max = 0;
+  for (const h of [...job.history, { status: job.status }]) {
+    const i = STAGES.indexOf(h.status);
+    if (i > max && h.status !== 'Rejected') max = i;
+  }
+  return max;
+}
+
+function followUpInfo(job) {
+  if (!job.followUp || CLOSED.has(job.status)) return null;
+  const d = localDate(job.followUp);
+  if (!d) return null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const days = Math.round((d - today) / 86400000);
+  if (days < 0) return { days, cls: 'bad', label: `Follow-up overdue (${fmtDay(d)})` };
+  if (days === 0) return { days, cls: 'warn', label: 'Follow up today' };
+  if (days === 1) return { days, cls: 'warn', label: 'Follow up tomorrow' };
+  if (days === 2) return { days, cls: 'warn', label: `Follow up ${fmtDay(d)}` };
+  return { days, cls: '', label: `Follow up ${fmtDay(d)}` };
+}
+
+function setStatus(job, status) {
+  if (job.status === status) return;
+  job.status = status;
+  job.updatedAt = nowIso();
+  job.history.push({ status, at: job.updatedAt });
+}
+
+function moveJob(id, delta) {
+  const job = state.jobs.find((j) => j.id === id);
+  if (!job) return;
+  const i = STAGES.indexOf(job.status) + delta;
+  if (i < 0 || i >= STAGES.length) return;
+  setStatus(job, STAGES[i]);
+  save(); render();
+}
+
+function renderBoard() {
+  const cmp = (a, b) => {
+    const fa = followUpInfo(a), fb = followUpInfo(b);
+    if (fa && fb && fa.days !== fb.days) return fa.days - fb.days;
+    if (!!fa !== !!fb) return fa ? -1 : 1;
+    if ((b.match ?? -1) !== (a.match ?? -1)) return (b.match ?? -1) - (a.match ?? -1);
+    return String(b.updatedAt).localeCompare(String(a.updatedAt));
+  };
+  $('#board').innerHTML = STAGES.map((stage) => {
+    const items = state.jobs.filter((j) => j.status === stage).sort(cmp);
+    return `<section class="col" style="--stage:var(--st-${slug(stage)})" aria-label="${esc(stage)}">
+      <header class="col-head"><span class="dot"></span><h3>${esc(stage)}</h3><span class="n">${items.length}</span></header>
+      <div class="col-body" data-stage="${esc(stage)}">${items.map(cardHtml).join('') || `<p class="empty">${stage === 'Saved' ? 'Add a job or track one from the live feed' : 'Drop a card here'}</p>`}</div>
+    </section>`;
+  }).join('');
+}
+
+function cardHtml(j) {
+  const url = safeUrl(j.url);
+  const i = STAGES.indexOf(j.status);
+  const fu = followUpInfo(j);
+  const title = url
+    ? `<a class="card-title" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(j.title || 'Untitled role')}</a>`
+    : `<span class="card-title">${esc(j.title || 'Untitled role')}</span>`;
+  return `<article class="card" draggable="true" data-id="${esc(j.id)}">
+    <div class="card-head">${title}${j.match != null ? `<span class="score ${scoreClass(j.match)}" title="Match score">${j.match}</span>` : ''}</div>
+    <div class="card-co">${esc(j.company || 'Unknown company')}${j.location ? ` · ${esc(j.location)}` : ''}</div>
+    <div class="chips">
+      ${fu ? `<span class="chip ${fu.cls}">${esc(fu.label)}</span>` : ''}
+      ${j.salary ? `<span class="chip">${esc(j.salary)}</span>` : ''}
+      ${j.resume ? `<span class="chip" title="Resume version">Resume ${esc(j.resume)}</span>` : ''}
+    </div>
+    ${j.notes ? `<p class="card-notes">${esc(j.notes)}</p>` : ''}
+    <div class="card-actions">
+      <button class="icon" type="button" data-act="prev" ${i <= 0 ? 'disabled' : ''} title="${i > 0 ? `Move to ${esc(STAGES[i - 1])}` : ''}" aria-label="Move to previous stage">‹</button>
+      <button class="icon" type="button" data-act="next" ${i >= STAGES.length - 1 ? 'disabled' : ''} title="${i < STAGES.length - 1 ? `Move to ${esc(STAGES[i + 1])}` : ''}" aria-label="Move to next stage">›</button>
+      <span class="spacer"></span>
+      <button class="linkbtn" type="button" data-act="edit">Edit</button>
+      <button class="linkbtn danger" type="button" data-act="delete">Delete</button>
+    </div>
+  </article>`;
+}
+
+function renderStats() {
+  const jobs = state.jobs;
+  const applied = jobs.filter((j) => stageReached(j) >= 1);
+  const weekAgo = Date.now() - 7 * 86400000;
+  const appliedThisWeek = jobs.filter((j) => j.history.some((h) => h.status === 'Applied' && Date.parse(h.at) >= weekAgo)).length;
+  const responded = jobs.filter((j) => stageReached(j) >= 2).length;
+  const interviews = jobs.filter((j) => stageReached(j) >= 3).length;
+  const inProgress = jobs.filter((j) => j.status === 'Recruiter Screen' || j.status === 'Interview').length;
+  const offers = jobs.filter((j) => stageReached(j) >= 4).length;
+  const active = jobs.filter((j) => !CLOSED.has(j.status)).length;
+  const fresh = newFeedJobs().length;
+  const strong = feed ? feed.jobs.filter((j) => j.score >= 70 && !state.dismissed[j.id]).length : 0;
+  const rate = applied.length ? `${Math.round((responded / applied.length) * 100)}%` : '–';
+  const tiles = [
+    ['Tracked', jobs.length, `${active} active`],
+    ['Applied', applied.length, `${appliedThisWeek} this week`],
+    ['Response rate', rate, applied.length ? `${responded} of ${applied.length} applications` : 'no applications yet'],
+    ['Interviews', interviews, `${inProgress} in progress`],
+    ['Offers', offers, offers ? 'nice work' : 'keep going'],
+    ['Feed', fresh, `new · ${strong} strong matches (70+)`],
+  ];
+  $('#stats').innerHTML = tiles.map(([label, value, sub]) =>
+    `<div class="stat"><div class="label">${esc(label)}</div><div class="value">${esc(value)}</div><div class="sub">${esc(sub)}</div></div>`).join('');
+}
+
+function renderBanner() {
+  const due = state.jobs.map((j) => ({ j, f: followUpInfo(j) })).filter((x) => x.f && x.f.days <= 2).sort((a, b) => a.f.days - b.f.days);
+  const el = $('#banner');
+  if (!due.length) { el.hidden = true; el.innerHTML = ''; return; }
+  const overdue = due.filter((x) => x.f.days < 0).length;
+  el.hidden = false;
+  el.innerHTML = `<span aria-hidden="true">⚑</span><div><strong>${due.length} follow-up${due.length > 1 ? 's' : ''} due within 48 hours${overdue ? ` (${overdue} overdue)` : ''}</strong>
+    <ul>${due.map(({ j, f }) => `<li><button type="button" data-edit="${esc(j.id)}">${esc(j.company || j.title)}: ${esc(j.title)}</button> <span class="small">${esc(f.label.replace(/^Follow[- ]up /i, ''))}</span></li>`).join('')}</ul></div>`;
+}
+
+function renderResumeList() {
+  const versions = [...new Set(state.jobs.map((j) => j.resume).filter(Boolean))].sort();
+  $('#resumeList').innerHTML = versions.map((v) => `<option value="${esc(v)}"></option>`).join('');
+}
+
+/* ---------- editor ---------- */
+const editor = $('#editor');
+const form = $('#editorForm');
+let editingId = null;
+
+$('select[name=status]', form).innerHTML = STAGES.map((s) => `<option>${esc(s)}</option>`).join('');
+
+function openEditor(job) {
+  editingId = job?.id || null;
+  $('#editorTitle').textContent = job ? 'Edit job' : 'Add job';
+  $('#editorError').hidden = true;
+  const j = job || { status: 'Saved' };
+  for (const name of ['title', 'company', 'url', 'status', 'resume', 'followUp', 'location', 'salary', 'notes']) {
+    form.elements[name].value = j[name] ?? '';
+  }
+  form.elements.match.value = j.match ?? '';
+  if (typeof editor.showModal === 'function') editor.showModal(); else editor.setAttribute('open', '');
+  form.elements.title.focus();
+}
+
+function closeEditor() {
+  if (typeof editor.close === 'function') editor.close(); else editor.removeAttribute('open');
+  editingId = null;
+}
+
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const f = form.elements;
+  const title = f.title.value.trim();
+  const company = f.company.value.trim();
+  const url = f.url.value.trim();
+  const err = $('#editorError');
+  if (!title || !company) { err.textContent = 'Title and company are required.'; err.hidden = false; return; }
+  if (url && !safeUrl(url)) { err.textContent = 'The URL needs to start with http:// or https://.'; err.hidden = false; return; }
+  const matchVal = f.match.value === '' ? null : Math.max(0, Math.min(100, Math.round(Number(f.match.value))));
+  const fields = {
+    title, company, url: safeUrl(url), resume: f.resume.value.trim(), followUp: f.followUp.value,
+    location: f.location.value.trim(), salary: f.salary.value.trim(), notes: f.notes.value.trim(),
+    match: Number.isNaN(matchVal) ? null : matchVal,
+  };
+  if (editingId) {
+    const job = state.jobs.find((j) => j.id === editingId);
+    if (job) { Object.assign(job, fields); setStatus(job, f.status.value); job.updatedAt = nowIso(); }
+    toast('Job updated');
+  } else {
+    state.jobs.push(normalizeJob({ ...fields, status: f.status.value, source: 'manual' }));
+    toast(`Added to ${f.status.value}`);
+  }
+  save(); closeEditor(); render();
+});
+$('#editorCancel').addEventListener('click', closeEditor);
+
+/* ---------- board events ---------- */
+const board = $('#board');
+board.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const id = btn.closest('.card').dataset.id;
+  const job = state.jobs.find((j) => j.id === id);
+  if (!job) return;
+  const act = btn.dataset.act;
+  if (act === 'prev') moveJob(id, -1);
+  else if (act === 'next') moveJob(id, 1);
+  else if (act === 'edit') openEditor(job);
+  else if (act === 'delete' && confirm(`Delete "${job.title}" at ${job.company || 'unknown company'}?`)) {
+    state.jobs = state.jobs.filter((j) => j.id !== id);
+    save(); render(); toast('Deleted');
+  }
+});
+board.addEventListener('dragstart', (e) => {
+  const card = e.target.closest('.card');
+  if (!card) return;
+  e.dataTransfer.setData('text/plain', card.dataset.id);
+  e.dataTransfer.effectAllowed = 'move';
+  card.classList.add('dragging');
+});
+board.addEventListener('dragend', (e) => { e.target.closest?.('.card')?.classList.remove('dragging'); });
+board.addEventListener('dragover', (e) => {
+  const zone = e.target.closest('.col-body');
+  if (!zone) return;
+  e.preventDefault();
+  $$('.col-body.over').forEach((z) => z !== zone && z.classList.remove('over'));
+  zone.classList.add('over');
+});
+board.addEventListener('dragleave', (e) => {
+  const zone = e.target.closest('.col-body');
+  if (zone && !zone.contains(e.relatedTarget)) zone.classList.remove('over');
+});
+board.addEventListener('drop', (e) => {
+  const zone = e.target.closest('.col-body');
+  if (!zone) return;
+  e.preventDefault();
+  zone.classList.remove('over');
+  const job = state.jobs.find((j) => j.id === e.dataTransfer.getData('text/plain'));
+  if (job && job.status !== zone.dataset.stage) {
+    setStatus(job, zone.dataset.stage);
+    save(); render();
+  }
+});
+$('#banner').addEventListener('click', (e) => {
+  const id = e.target.closest('[data-edit]')?.dataset.edit;
+  const job = id && state.jobs.find((j) => j.id === id);
+  if (job) openEditor(job);
+});
+
+/* ---------- live feed ---------- */
+function remoteFeedUrl() {
+  // Served from <owner>.github.io/<repo>/: read that repo's feed so forks work too.
+  const host = /^([a-z0-9-]+)\.github\.io$/i.exec(location.hostname);
+  const repoName = location.pathname.split('/').filter(Boolean)[0];
+  const repo = host && repoName ? `${host[1]}/${repoName}` : REPO;
+  return `https://raw.githubusercontent.com/${repo}/${FEED_BRANCH}/jobs.json`;
+}
+
+function feedUrls() {
+  const urls = [];
+  if (state.settings.endpoint) urls.push(state.settings.endpoint);
+  if (location.protocol.startsWith('http')) urls.push(new URL('data/jobs.json', location.href).href);
+  urls.push(remoteFeedUrl());
+  return [...new Set(urls)];
+}
+
+function normalizeFeed(data, previous) {
+  const list = Array.isArray(data) ? data : Array.isArray(data?.jobs) ? data.jobs : null;
+  if (!list) throw new Error('response has no jobs array');
+  const prevSeen = new Map((previous?.jobs || []).map((j) => [j.id, j.first_seen]));
+  const stamp = nowIso();
+  const jobs = list.filter((j) => j && (j.title || j.url)).map((j) => {
+    const id = String(j.id || j.url || `${j.company}|${j.title}`);
+    return {
+      id,
+      title: String(j.title || 'Untitled role'),
+      company: String(j.company || ''),
+      url: safeUrl(j.url),
+      location: String(j.location || ''),
+      remote: Boolean(j.remote),
+      salary: String(j.salary || ''),
+      posted_at: j.posted_at || null,
+      first_seen: j.first_seen || prevSeen.get(id) || stamp,
+      score: Math.max(0, Math.min(100, Number(j.score) || 0)),
+      matched: Array.isArray(j.matched) ? j.matched.map(String) : [],
+      snippet: String(j.snippet || ''),
+      source: String(j.source || ''),
+      via: String(j.via || j.source || ''),
+    };
+  });
+  return {
+    generated_at: data.generated_at || null,
+    sources: Array.isArray(data.sources) ? data.sources : [],
+    jobs,
+  };
+}
+
+async function refreshFeed({ manual = false } = {}) {
+  if (checking) return;
+  checking = true;
+  lastCheck = Date.now();
+  const btn = $('#refreshBtn');
+  btn.disabled = true; btn.textContent = 'Refreshing…';
+  const errors = [];
+  let loaded = null;
+  for (const url of feedUrls()) {
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      loaded = { ...normalizeFeed(await res.json(), feed), url, fetchedAt: nowIso() };
+      break;
+    } catch (err) {
+      errors.push(`${url.replace(/[?#].*$/, '')}: ${err.message || err}`);
+    }
+  }
+  if (loaded) {
+    const before = new Set((feed?.jobs || []).map((j) => j.id));
+    const arrivals = feed ? loaded.jobs.filter((j) => !before.has(j.id) && !state.dismissed[j.id]) : [];
+    feed = loaded;
+    feed.errors = errors;
+    storageSet(FEED_KEY, feed);
+    if (arrivals.length) {
+      toast(`${arrivals.length} new job${arrivals.length > 1 ? 's' : ''} in the feed`);
+      notify(arrivals);
+    } else if (manual) {
+      toast(`Feed is current: ${feed.jobs.length} matches`);
+    }
+  } else {
+    if (feed) feed.errors = errors;
+    if (manual) toast('Could not reach the feed. Showing the last copy.');
+  }
+  lastFeedErrors = errors;
+  btn.disabled = false; btn.textContent = 'Refresh now';
+  checking = false;
+  render();
+}
+
+function notify(arrivals) {
+  const s = state.settings;
+  const hits = arrivals.filter((j) => j.score >= s.notifyScore).sort((a, b) => b.score - a.score);
+  if (!s.notify || !hits.length || !('Notification' in window) || Notification.permission !== 'granted') return;
+  try {
+    new Notification(`${hits.length} new match${hits.length > 1 ? 'es' : ''} (${hits[0].score}+)`, {
+      body: hits.slice(0, 3).map((j) => `${j.title} · ${j.company} (${j.score})`).join('\n'),
+      tag: 'jcc-feed',
+    });
+  } catch { /* some browsers only allow notifications from a service worker */ }
+}
+
+function isNew(j) {
+  return !state.feedSeenAt || Date.parse(j.first_seen) > Date.parse(state.feedSeenAt);
+}
+function newFeedJobs() {
+  return (feed?.jobs || []).filter((j) => isNew(j) && !state.dismissed[j.id] && !trackedFor(j));
+}
+function trackedFor(j) {
+  return state.jobs.find((p) => (p.feedId && p.feedId === j.id) || (j.url && p.url && p.url === j.url));
+}
+
+function visibleFeed() {
+  const p = state.prefs;
+  const q = p.q.trim().toLowerCase();
+  let list = (feed?.jobs || []).filter((j) => j.score >= p.minScore);
+  if (p.remoteOnly) list = list.filter((j) => j.remote);
+  if (p.newOnly) list = list.filter(isNew);
+  if (!p.showDismissed) list = list.filter((j) => !state.dismissed[j.id]);
+  if (q) list = list.filter((j) => [j.title, j.company, j.location, j.salary, j.matched.join(' '), j.snippet].join(' ').toLowerCase().includes(q));
+  const when = (j) => Date.parse(j.posted_at || j.first_seen) || 0;
+  return list.sort(p.sort === 'newest'
+    ? (a, b) => when(b) - when(a) || b.score - a.score
+    : (a, b) => b.score - a.score || when(b) - when(a));
+}
+
+function renderFeed() {
+  const status = $('#feedStatus');
+  const list = $('#feedList');
+  if (!feed) {
+    status.textContent = checking ? 'Loading feed…' : 'No feed loaded yet.';
+    list.innerHTML = `<li class="blank"><h3>No feed yet</h3>
+      <p>Matches appear here once the <b>Job feed</b> GitHub Action has run. It runs every hour; you can also start it by hand from the repo's Actions tab.</p>
+      ${lastFeedErrors.length ? `<p class="small">Tried: ${lastFeedErrors.map(esc).join('<br>')}</p>` : ''}</li>`;
+    $('#sourcesBox').hidden = true;
+    return;
+  }
+  const items = visibleFeed();
+  const built = feed.generated_at ? `built <b>${esc(ago(feed.generated_at))}</b>` : 'loaded';
+  const stale = feed.generated_at && Date.now() - Date.parse(feed.generated_at) > 3 * 3600000;
+  status.innerHTML = `Feed ${built} · <b>${feed.jobs.length}</b> matches · showing ${items.length}` +
+    (stale ? ` · <span style="color:var(--warn)">older than 3 h; check the Action</span>` : '') +
+    (feed.errors?.length && feed.url !== feedUrls()[0] ? ` · <span title="${esc(feed.errors.join('\n'))}">using fallback feed</span>` : '');
+
+  const srcs = feed.sources || [];
+  $('#sourcesBox').hidden = !srcs.length;
+  if (srcs.length) {
+    const counts = srcs.reduce((acc, s) => ((acc[s.state] = (acc[s.state] || 0) + 1), acc), {});
+    $('#sourcesSummary').textContent = `Sources: ${counts.ok || 0} ok` + (counts.cached ? `, ${counts.cached} cached` : '') +
+      (counts.error ? `, ${counts.error} failing` : '') + (counts.skipped ? `, ${counts.skipped} not configured` : '');
+    const order = { error: 0, ok: 1, cached: 2, skipped: 3 };
+    $('#sourcesBody').innerHTML = [...srcs].sort((a, b) => (order[a.state] ?? 9) - (order[b.state] ?? 9) || String(a.name).localeCompare(b.name)).map((s) =>
+      `<tr><td>${esc(s.name)} <span class="muted">· ${esc(s.via || '')}</span></td><td><span class="state ${esc(s.state)}">${esc(s.state)}</span></td>
+       <td class="num">${esc(s.found ?? '–')}</td><td class="num">${esc(s.kept ?? '–')}</td><td>${esc(ago(s.fetched_at) || '–')}</td><td class="muted">${esc(s.message || '')}</td></tr>`).join('');
+  }
+
+  if (!items.length) {
+    list.innerHTML = `<li class="blank"><h3>Nothing matches these filters</h3><p>Lower the minimum score or clear the search.</p></li>`;
+    return;
+  }
+  list.innerHTML = items.map((j) => {
+    const url = safeUrl(j.url);
+    const tracked = trackedFor(j);
+    const dismissed = !!state.dismissed[j.id];
+    const meta = [
+      j.company && esc(j.company),
+      j.location && esc(j.location),
+      j.remote && !/remote/i.test(j.location) && 'Remote',
+      j.salary && `<b>${esc(j.salary)}</b>`,
+      j.posted_at ? `posted ${esc(ago(j.posted_at))}` : `seen ${esc(ago(j.first_seen))}`,
+      j.via && `via ${esc(j.via)}`,
+    ].filter(Boolean).join('<span class="sep">·</span>');
+    return `<li class="job${dismissed ? ' dismissed' : ''}" data-id="${esc(j.id)}">
+      <div class="ring ${scoreClass(j.score)}" title="Match score">${j.score}</div>
+      <div>
+        ${url ? `<a class="job-title" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(j.title)}</a>` : `<span class="job-title">${esc(j.title)}</span>`}
+        ${isNew(j) && !dismissed && !tracked ? '<span class="new-pill">NEW</span>' : ''}
+        <div class="job-meta">${meta}</div>
+        ${j.matched.length ? `<div class="chips">${j.matched.map((m) => `<span class="chip kw">${esc(m)}</span>`).join('')}</div>` : ''}
+        ${j.snippet ? `<p class="snippet">${esc(j.snippet)}</p>` : ''}
+      </div>
+      <div class="job-actions">
+        ${tracked ? `<span class="tracked">✓ ${esc(tracked.status)}</span>` : `<button class="btn sm primary" type="button" data-act="track">Track</button>`}
+        <button class="btn sm" type="button" data-act="${dismissed ? 'restore' : 'dismiss'}">${dismissed ? 'Restore' : 'Dismiss'}</button>
+      </div>
+    </li>`;
+  }).join('');
+}
+
+$('#feedList').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const id = btn.closest('.job').dataset.id;
+  const j = feed?.jobs.find((x) => x.id === id);
+  if (!j) return;
+  if (btn.dataset.act === 'track') {
+    state.jobs.push(normalizeJob({
+      title: j.title, company: j.company, url: j.url, status: 'Saved', match: j.score,
+      location: j.location, salary: j.salary, source: 'feed', feedId: j.id,
+      notes: [j.matched.length ? `Matched: ${j.matched.join(', ')}` : '', j.snippet].filter(Boolean).join('\n'),
+    }));
+    toast('Added to Saved');
+  } else if (btn.dataset.act === 'dismiss') {
+    state.dismissed[id] = nowIso();
+  } else if (btn.dataset.act === 'restore') {
+    delete state.dismissed[id];
+  }
+  pruneDismissed();
+  save(); render();
+});
+
+function pruneDismissed() {
+  const ids = Object.keys(state.dismissed);
+  if (ids.length <= 2000) return;
+  ids.sort((a, b) => String(state.dismissed[a]).localeCompare(String(state.dismissed[b])));
+  for (const id of ids.slice(0, ids.length - 2000)) delete state.dismissed[id];
+}
+
+const filterInputs = { fq: 'q', fmin: 'minScore', fremote: 'remoteOnly', fnew: 'newOnly', fdismissed: 'showDismissed', fsort: 'sort' };
+for (const [elId, key] of Object.entries(filterInputs)) {
+  const el = $('#' + elId);
+  el.addEventListener(el.type === 'search' || el.type === 'range' ? 'input' : 'change', () => {
+    state.prefs[key] = el.type === 'checkbox' ? el.checked : el.type === 'range' ? Number(el.value) : el.value;
+    $('#fminOut').textContent = state.prefs.minScore;
+    save(); renderFeed();
+  });
+}
+function syncFilters() {
+  const p = state.prefs;
+  $('#fq').value = p.q; $('#fmin').value = p.minScore; $('#fminOut').textContent = p.minScore;
+  $('#fremote').checked = p.remoteOnly; $('#fnew').checked = p.newOnly;
+  $('#fdismissed').checked = p.showDismissed; $('#fsort').value = p.sort;
+}
+$('#markSeenBtn').addEventListener('click', () => {
+  state.feedSeenAt = nowIso();
+  save(); render(); toast('Marked all as seen');
+});
+
+/* ---------- strategy ---------- */
+function leadUrl(l) {
+  return l.url || `https://www.google.com/search?q=${encodeURIComponent(l.q || `${l.company} ${l.title}`)}`;
+}
+function leadTracked(l) {
+  return state.jobs.find((j) => j.source === 'scan' && j.title === l.title && j.company === l.company);
+}
+function trackLead(l) {
+  if (leadTracked(l)) return false;
+  state.jobs.push(normalizeJob({
+    title: l.title, company: l.company, url: leadUrl(l), status: 'Saved', match: l.match,
+    location: l.location, salary: l.salary || '', source: 'scan',
+    notes: `${l.notes}${l.url ? '' : ' Link is a search; swap in the posting URL once you find it.'}`,
+  }));
+  return true;
+}
+function renderLeads() {
+  $('#leadsBody').innerHTML = SCAN_LEADS.map((l, i) => {
+    const t = leadTracked(l);
+    return `<tr>
+      <td><a href="${esc(leadUrl(l))}" target="_blank" rel="noopener noreferrer">${esc(l.title)}</a><div class="muted small">${esc(l.notes)}</div></td>
+      <td>${esc(l.company)}<div class="muted small">${esc(l.location)}</div></td>
+      <td>${esc(l.salary || '–')}</td>
+      <td><span class="score ${scoreClass(l.match)}">${l.match}</span></td>
+      <td>${t ? `<span class="tracked">✓ ${esc(t.status)}</span>` : `<button class="btn sm" type="button" data-lead="${i}">Track</button>`}</td>
+    </tr>`;
+  }).join('');
+}
+$('#leadsBody').addEventListener('click', (e) => {
+  const i = e.target.closest('[data-lead]')?.dataset.lead;
+  if (i == null) return;
+  if (trackLead(SCAN_LEADS[+i])) { save(); render(); toast('Added to Saved'); }
+});
+$('#trackAllLeads').addEventListener('click', () => {
+  const added = SCAN_LEADS.filter(trackLead).length;
+  save(); render();
+  toast(added ? `Added ${added} lead${added > 1 ? 's' : ''} to Saved` : 'All scan leads are already in your pipeline');
+});
+$('#searchStrings').innerHTML = SEARCH_STRINGS.map((s) => `<button class="code" type="button" data-copy="${esc(s)}">${esc(s)}</button>`).join('');
+$('#searchStrings').addEventListener('click', async (e) => {
+  const text = e.target.closest('[data-copy]')?.dataset.copy;
+  if (!text) return;
+  try { await navigator.clipboard.writeText(text); toast('Copied'); } catch { toast('Copy blocked by the browser; select the text instead'); }
+});
+$('#quickLinks').innerHTML = QUICK_LINKS.map(([label, url]) => `<a class="btn sm" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(label)} ↗</a>`).join('');
+
+/* ---------- settings, import / export ---------- */
+const settingsForm = $('#settingsForm');
+function syncSettings() {
+  const s = state.settings;
+  settingsForm.elements.endpoint.value = s.endpoint;
+  settingsForm.elements.refreshMin.value = String(s.refreshMin);
+  settingsForm.elements.notify.checked = s.notify;
+  settingsForm.elements.notifyScore.value = s.notifyScore;
+  settingsForm.elements.theme.value = s.theme;
+  const repo = remoteFeedUrl().split('/').slice(3, 5).join('/');
+  $('#feedSources').innerHTML = [
+    ...feedUrls().map((u, i) => `<li>${i ? 'Fallback' : 'Primary'}: <a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${esc(u)}</a></li>`),
+    `<li>Schedule, sources and scoring: <a href="https://github.com/${esc(repo)}/actions/workflows/job-feed.yml" target="_blank" rel="noopener noreferrer">Job feed workflow</a> · <a href="https://github.com/${esc(repo)}/blob/HEAD/config/search.json" target="_blank" rel="noopener noreferrer">config/search.json</a></li>`,
+  ].join('');
+}
+settingsForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = settingsForm.elements;
+  const endpoint = f.endpoint.value.trim();
+  if (endpoint && !safeUrl(endpoint)) { toast('The endpoint must be an http(s) URL'); return; }
+  const wantsNotify = f.notify.checked;
+  if (wantsNotify && 'Notification' in window && Notification.permission === 'default') {
+    try { await Notification.requestPermission(); } catch { /* ignored */ }
+  }
+  const notifyOk = wantsNotify && 'Notification' in window && Notification.permission === 'granted';
+  const endpointChanged = endpoint !== state.settings.endpoint;
+  state.settings = {
+    endpoint, refreshMin: Number(f.refreshMin.value), notify: notifyOk,
+    notifyScore: Math.max(0, Math.min(100, Number(f.notifyScore.value) || 70)), theme: f.theme.value,
+  };
+  save(); applyTheme(); syncSettings();
+  toast(wantsNotify && !notifyOk ? 'Saved, but the browser blocked notifications' : 'Settings saved');
+  if (endpointChanged) refreshFeed({ manual: true });
+});
+
+function applyTheme() {
+  const t = state.settings.theme;
+  if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+  else delete document.documentElement.dataset.theme;
+}
+
+function exportData() {
+  const payload = { app: 'job-command-center', version: 1, exportedAt: nowIso(), ...state };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `job-command-center-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast(`Exported ${state.jobs.length} jobs`);
+}
+
+function importData(text) {
+  let data;
+  try { data = JSON.parse(text); } catch { toast('That file is not valid JSON'); return; }
+  const incoming = (Array.isArray(data) ? data : Array.isArray(data?.jobs) ? data.jobs : []).map(normalizeJob).filter(Boolean);
+  if (!incoming.length && !data?.settings) { toast('No jobs found in that file'); return; }
+  let added = 0, updated = 0;
+  for (const job of incoming) {
+    const cur = state.jobs.find((j) => j.id === job.id || (job.url && j.url === job.url && j.title === job.title));
+    if (!cur) { state.jobs.push(job); added++; }
+    else if (String(job.updatedAt) > String(cur.updatedAt)) { Object.assign(cur, job, { id: cur.id }); updated++; }
+  }
+  if (!Array.isArray(data)) {
+    if (data.dismissed && typeof data.dismissed === 'object') Object.assign(state.dismissed, data.dismissed);
+    if (data.settings) state.settings = { ...state.settings, ...data.settings };
+    if (data.prefs) state.prefs = { ...state.prefs, ...data.prefs };
+  }
+  save(); applyTheme(); syncFilters(); syncSettings(); render();
+  toast(`Imported: ${added} added, ${updated} updated`);
+}
+
+const importFile = $('#importFile');
+importFile.addEventListener('change', () => {
+  const file = importFile.files[0];
+  if (!file) return;
+  file.text().then(importData);
+  importFile.value = '';
+});
+for (const id of ['exportBtn', 'exportBtn2']) $('#' + id).addEventListener('click', exportData);
+for (const id of ['importBtn', 'importBtn2']) $('#' + id).addEventListener('click', () => importFile.click());
+$('#addBtn').addEventListener('click', () => openEditor());
+$('#refreshBtn').addEventListener('click', () => refreshFeed({ manual: true }));
+$('#resetBtn').addEventListener('click', () => {
+  if (!confirm(`Delete all ${state.jobs.length} tracked jobs, dismissed items and settings from this browser? Export first if you want a backup.`)) return;
+  try { localStorage.removeItem(STORE_KEY); localStorage.removeItem(FEED_KEY); } catch { /* ignored */ }
+  state = loadState(); feed = null;
+  applyTheme(); syncFilters(); syncSettings(); render(); refreshFeed();
+  toast('All data deleted');
+});
+
+/* ---------- tabs, keyboard, timers ---------- */
+function showTab(name) {
+  if (!['pipeline', 'feed', 'strategy', 'settings'].includes(name)) name = 'pipeline';
+  state.prefs.tab = name;
+  for (const b of $$('[role=tab]')) {
+    const on = b.dataset.tab === name;
+    b.setAttribute('aria-selected', String(on));
+    b.tabIndex = on ? 0 : -1;
+    $('#p-' + b.dataset.tab).hidden = !on;
+  }
+  if (location.hash !== '#' + name) history.replaceState(null, '', '#' + name);
+  save();
+}
+$$('[role=tab]').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
+$('.tabs').addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+  const tabs = $$('[role=tab]');
+  const i = tabs.findIndex((t) => t.getAttribute('aria-selected') === 'true');
+  const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+  showTab(next.dataset.tab); next.focus();
+});
+window.addEventListener('hashchange', () => showTab(location.hash.slice(1)));
+
+document.addEventListener('keydown', (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey || editor.open) return;
+  if (e.target.closest('input, textarea, select, [contenteditable]')) return;
+  if (e.key === 'n') { e.preventDefault(); openEditor(); }
+  else if (e.key === '/') { e.preventDefault(); showTab('feed'); $('#fq').focus(); }
+  else if (e.key === 'r') { e.preventDefault(); refreshFeed({ manual: true }); }
+});
+
+function tick() {
+  const mins = state.settings.refreshMin;
+  const el = $('#nextCheck');
+  if (!mins) { el.textContent = 'Auto-refresh off'; return; }
+  const left = lastCheck + mins * 60000 - Date.now();
+  if (left <= 0 && !checking && document.visibilityState === 'visible') { refreshFeed(); return; }
+  const s = Math.max(0, Math.round(left / 1000));
+  const hh = Math.floor(s / 3600), mm = Math.floor((s % 3600) / 60), ss = s % 60;
+  el.textContent = `Next check ${hh ? hh + ':' : ''}${String(mm).padStart(hh ? 2 : 1, '0')}:${String(ss).padStart(2, '0')}`;
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') tick(); });
+
+function render() {
+  renderStats(); renderBanner(); renderBoard(); renderFeed(); renderLeads(); renderResumeList();
+  const n = newFeedJobs().length;
+  const badge = $('#newCount');
+  badge.hidden = !n; badge.textContent = n;
+  document.title = n ? `(${n}) Job Command Center` : 'Job Command Center';
+  const built = feed?.generated_at ? `Feed built ${ago(feed.generated_at)}. ` : '';
+  $('#footer').textContent = `${built}Pipeline data stays in this browser. Export to back it up.`;
+}
+
+applyTheme();
+syncFilters();
+syncSettings();
+showTab(location.hash.slice(1) || state.prefs.tab);
+render();
+refreshFeed();
+tick();
+setInterval(tick, 1000);
+</script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+{
+  "profile": {
+    "headline": "Salesforce Data 360 / Agentforce Technical Builder",
+    "about": "Favours hands-on Agentforce + Data 360 builder, architect and forward-deployed roles, remote or Austin. Patterns are case-insensitive regular expressions matched as whole words."
+  },
+  "scoring": {
+    "min_score": 30,
+    "max_age_days": 45,
+    "max_jobs": 300,
+    "remote_bonus": 8,
+    "require_any": ["salesforce", "agentforce", "sfdc", "data ?360"],
+    "exclude_title": [
+      "account (?:executive|manager|director|partner)",
+      "sales (?:development|representative|director|manager)",
+      "business development",
+      "[sb]dr",
+      "recruit(?:er|ing)",
+      "talent acquisition",
+      "intern(?:ship)?",
+      "customer success manager",
+      "renewals?",
+      "paralegal"
+    ],
+    "keywords": [
+      {"label": "Agentforce", "pattern": "agentforce", "weight": 25},
+      {"label": "Data 360 / Data Cloud", "pattern": "data ?360|data cloud|salesforce cdp", "weight": 20},
+      {"label": "Forward deployed", "pattern": "forward[- ]deployed", "weight": 15},
+      {"label": "Technical builder", "pattern": "technical builder", "weight": 10},
+      {"label": "Salesforce", "pattern": "salesforce|sfdc", "weight": 8},
+      {"label": "RAG / vector search", "pattern": "rag|retrieval[- ]augmented(?: generation)?|vector (?:search|database|db|store)|embeddings?", "weight": 8},
+      {"label": "MCP", "pattern": "mcp|model context protocol", "weight": 8},
+      {"label": "LLM / agentic AI", "pattern": "llms?|large language models?|generative ai|gen ?ai|agentic|ai agents?", "weight": 6},
+      {"label": "Einstein / Prompt Builder", "pattern": "prompt builder|einstein", "weight": 6},
+      {"label": "Apex", "pattern": "apex", "weight": 6},
+      {"label": "LWC", "pattern": "lwc|lightning web components?", "weight": 6},
+      {"label": "CPQ / Revenue Cloud", "pattern": "cpq|revenue cloud|quote[- ]to[- ]cash|revenue lifecycle management", "weight": 5},
+      {"label": "Architecture", "pattern": "architect(?:ure|s)?", "weight": 5},
+      {"label": "Austin / Texas", "pattern": "austin|texas", "weight": 5},
+      {"label": "Integrations", "pattern": "mulesoft|platform events?|integration architect(?:ure)?", "weight": 3},
+      {"label": "Python", "pattern": "python", "weight": 3}
+    ],
+    "title_keywords": [
+      {"label": "Agentforce", "pattern": "agentforce", "weight": 15},
+      {"label": "Data 360 / Data Cloud", "pattern": "data ?360|data cloud", "weight": 12},
+      {"label": "Forward deployed", "pattern": "forward[- ]deployed", "weight": 12},
+      {"label": "Architect", "pattern": "architect", "weight": 10},
+      {"label": "Lead / principal", "pattern": "lead|principal|staff", "weight": 6},
+      {"label": "Salesforce", "pattern": "salesforce|sfdc", "weight": 6},
+      {"label": "Senior", "pattern": "senior|sr\\.?", "weight": 4},
+      {"label": "Builder role", "pattern": "developer|engineer|builder|consultant", "weight": 3}
+    ]
+  },
+  "sources": [
+    {"type": "workday", "name": "Salesforce careers", "company": "Salesforce",
+     "host": "salesforce.wd12.myworkdayjobs.com", "tenant": "salesforce", "site": "External_Career_Site",
+     "queries": ["Agentforce", "Data Cloud", "Data 360", "Forward Deployed"]},
+    {"type": "workday", "name": "CrowdStrike careers", "company": "CrowdStrike",
+     "host": "crowdstrike.wd5.myworkdayjobs.com", "tenant": "crowdstrike", "site": "crowdstrikecareers",
+     "queries": ["Salesforce", "Agentforce"]},
+
+    {"type": "greenhouse", "name": "NeuraFlash", "board": "neuraflash"},
+    {"type": "greenhouse", "name": "Spaulding Ridge", "board": "spauldingridge"},
+    {"type": "greenhouse", "name": "Certinia", "board": "certinia"},
+    {"type": "greenhouse", "name": "nCino", "board": "ncino"},
+    {"type": "greenhouse", "name": "Copado", "board": "copado"},
+    {"type": "lever", "name": "Veeva", "board": "veeva"},
+
+    {"type": "greenhouse", "name": "Anthropic", "board": "anthropic"},
+    {"type": "greenhouse", "name": "Databricks", "board": "databricks"},
+    {"type": "greenhouse", "name": "Stripe", "board": "stripe"},
+    {"type": "greenhouse", "name": "Datadog", "board": "datadog"},
+    {"type": "greenhouse", "name": "Cloudflare", "board": "cloudflare"},
+    {"type": "greenhouse", "name": "Twilio", "board": "twilio"},
+    {"type": "greenhouse", "name": "GitLab", "board": "gitlab"},
+    {"type": "greenhouse", "name": "MongoDB", "board": "mongodb"},
+    {"type": "greenhouse", "name": "Elastic", "board": "elastic"},
+    {"type": "greenhouse", "name": "Samsara", "board": "samsara"},
+    {"type": "greenhouse", "name": "Okta", "board": "okta"},
+    {"type": "ashby", "name": "OpenAI", "board": "openai"},
+    {"type": "ashby", "name": "Notion", "board": "notion"},
+    {"type": "ashby", "name": "Ramp", "board": "ramp"},
+
+    {"type": "remotive", "name": "Remotive", "queries": ["salesforce"], "every_hours": 6},
+    {"type": "adzuna", "name": "Adzuna US", "country": "us", "every_hours": 2,
+     "queries": ["agentforce", "salesforce data cloud", "salesforce architect"]},
+    {"type": "jooble", "name": "Jooble", "location": "United States", "every_hours": 2,
+     "queries": ["agentforce", "salesforce data cloud architect"]}
+  ]
+}
